@@ -1,10 +1,8 @@
 package pass
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -13,8 +11,6 @@ import (
 	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture"
 	captureopen "github.com/morefun2602/mitmproxy2swagger-go/internal/capture/open"
 	"github.com/morefun2602/mitmproxy2swagger-go/internal/schema"
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/swaggerutil"
-	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Options configures a single Pass run.
@@ -52,132 +48,12 @@ func Run(opts Options) error {
 	apiPrefix := strings.TrimSuffix(opts.APIPrefix, "/")
 	doc.EnsureDefaults(apiPrefix)
 
-	pathTemplates := doc.PathTemplates()
-	pathRegexes := make([]*regexp.Regexp, len(pathTemplates))
-	for i, tmpl := range pathTemplates {
-		pathRegexes[i] = pathToRegex(tmpl)
-	}
-
-	newPathTemplates := make([]string, 0)
-	seenNew := make(map[string]struct{})
-
-	err = reader.Each(func(req capture.CapturedRequest) error {
-		matchURL, ok := req.MatchingURL(apiPrefix)
-		if !ok {
-			return nil
-		}
-
-		method := strings.ToLower(req.Method())
-		path := stripAPIPrefix(stripQueryString(matchURL), apiPrefix)
-		status := req.ResponseStatusCode()
-
-		pathTemplateIndex := -1
-		for i, re := range pathRegexes {
-			if re.MatchString(path) {
-				pathTemplateIndex = i
-				break
-			}
-		}
-		if pathTemplateIndex < 0 {
-			if _, exists := seenNew[path]; exists {
-				return nil
-			}
-			seenNew[path] = struct{}{}
-			newPathTemplates = append(newPathTemplates, path)
-			return nil
-		}
-
-		pathTemplate := pathTemplates[pathTemplateIndex]
-		doc.SetPathIfNotExists(pathTemplate, map[string]any{})
-
-		ops, ok := doc.PathOperations(pathTemplate)
-		if !ok {
-			return nil
-		}
-
-		schema.SetKeyIfNotExists(ops, method, map[string]any{
-			"summary":   swaggerutil.PathTemplateToEndpointName(method, pathTemplate),
-			"responses": map[string]any{},
-		})
-
-		methodDoc, _ := ops[method].(map[string]any)
-
-		if opts.Headers {
-			headerParams := swaggerutil.RequestToHeaders(req.RequestHeaders())
-			if len(headerParams) > 0 {
-				schema.SetKeyIfNotExists(methodDoc, "parameters", headerParams)
-			}
-		}
-		params := swaggerutil.URLToParams(matchURL, pathTemplate)
-		if len(params) > 0 {
-			schema.SetKeyIfNotExists(methodDoc, "parameters", params)
-		}
-
-		if method != "get" && method != "head" {
-			if body := req.RequestBody(); body != nil {
-				if bodyVal, contentType, ok := parseRequestBody(body); ok {
-					content := map[string]any{
-						"content": map[string]any{
-							contentType: map[string]any{
-								"schema": swaggerutil.ValueToSchema(bodyVal),
-							},
-						},
-					}
-					if opts.Examples {
-						content["content"].(map[string]any)[contentType].(map[string]any)["example"] = swaggerutil.LimitExampleSize(bodyVal)
-					}
-					schema.SetKeyIfNotExists(methodDoc, "requestBody", content)
-				}
-			}
-		}
-
-		if respBody := req.ResponseBody(); respBody != nil {
-			if parsed, contentType, ok := parseResponseBody(respBody); ok {
-				resp := map[string]any{
-					"description": req.ResponseReason(),
-					"content": map[string]any{
-						contentType: map[string]any{
-							"schema": swaggerutil.ValueToSchema(parsed),
-						},
-					},
-				}
-				if opts.Examples {
-					resp["content"].(map[string]any)[contentType].(map[string]any)["example"] = swaggerutil.LimitExampleSize(parsed)
-				}
-				if opts.Headers {
-					if h := swaggerutil.ResponseToHeaders(req.ResponseHeaders()); len(h) > 0 {
-						resp["headers"] = h
-					}
-				}
-				responses, _ := methodDoc["responses"].(map[string]any)
-				if responses == nil {
-					responses = map[string]any{}
-					methodDoc["responses"] = responses
-				}
-				schema.SetKeyIfNotExists(responses, fmt.Sprint(status), resp)
-			}
-		}
-
-		responses, _ := methodDoc["responses"].(map[string]any)
-		if responses != nil && len(responses) == 0 {
-			responses["200"] = map[string]any{
-				"description": "OK",
-				"content":     map[string]any{},
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
+	runner := newPassRunner(doc, opts, apiPrefix, paramRegex)
+	if err := reader.Each(runner.processRequest); err != nil {
 		return err
 	}
 
-	sort.Strings(newPathTemplates)
-	suggestions := buildSuggestedTemplates(newPathTemplates, paramRegex, opts.SuppressParams)
-	doc.XPathTemplates = append(doc.XPathTemplates, suggestions...)
-	doc.XPathTemplates = schema.FilterXPathTemplates(doc.XPathTemplates, doc.Paths)
-	doc.XPathTemplates = schema.DedupeStrings(doc.XPathTemplates)
-
+	runner.finalizeDiscovery()
 	return doc.Save(opts.Output)
 }
 
@@ -193,113 +69,63 @@ func loadDocument(outputPath, inputPath string) (*schema.Document, error) {
 	return schema.New(inputPath), nil
 }
 
-func buildSuggestedTemplates(paths []string, paramRegex *regexp.Regexp, suppressParams bool) []string {
-	var out []string
-	seen := make(map[string]struct{})
-
-	isParam := func(segment string) bool {
-		return paramRegex.MatchString(segment)
-	}
-
-	for _, path := range paths {
-		segments := strings.Split(path, "/")
-		hasParam := false
-		for _, seg := range segments {
-			if seg != "" && isParam(seg) {
-				hasParam = true
-				break
-			}
-		}
-
-		if hasParam {
-			newSegments := make([]string, 0, len(segments))
-			paramID := 0
-			for _, seg := range segments {
-				if seg != "" && isParam(seg) {
-					name := "id"
-					if paramID > 0 {
-						name = fmt.Sprintf("id%d", paramID)
-					}
-					newSegments = append(newSegments, "{"+name+"}")
-					paramID++
-				} else {
-					newSegments = append(newSegments, seg)
-				}
-			}
-			suggested := strings.Join(newSegments, "/")
-			entry := "ignore:" + suggested
-			if _, ok := seen[entry]; !ok {
-				seen[entry] = struct{}{}
-				out = append(out, entry)
-			}
-		}
-
-		if !hasParam || !suppressParams {
-			entry := "ignore:" + path
-			if _, ok := seen[entry]; !ok {
-				seen[entry] = struct{}{}
-				out = append(out, entry)
-			}
-		}
-	}
-	return out
+type passRunner struct {
+	doc              *schema.Document
+	opts             Options
+	apiPrefix        string
+	paramRegex       *regexp.Regexp
+	pathTemplates    []string
+	pathRegexes      []*regexp.Regexp
+	newPathTemplates []string
+	seenNew          map[string]struct{}
 }
 
-func parseRequestBody(body []byte) (any, string, bool) {
-	var jsonVal any
-	if err := json.Unmarshal(body, &jsonVal); err == nil {
-		return jsonVal, "application/json", true
+func newPassRunner(doc *schema.Document, opts Options, apiPrefix string, paramRegex *regexp.Regexp) *passRunner {
+	pathTemplates := doc.PathTemplates()
+	pathRegexes := make([]*regexp.Regexp, len(pathTemplates))
+	for i, tmpl := range pathTemplates {
+		pathRegexes[i] = pathToRegex(tmpl)
 	}
-	var msgpackVal any
-	if err := msgpack.Unmarshal(body, &msgpackVal); err == nil {
-		return msgpackVal, "application/msgpack", true
+	return &passRunner{
+		doc:           doc,
+		opts:          opts,
+		apiPrefix:     apiPrefix,
+		paramRegex:    paramRegex,
+		pathTemplates: pathTemplates,
+		pathRegexes:   pathRegexes,
+		seenNew:       make(map[string]struct{}),
 	}
-	form, err := url.ParseQuery(string(body))
-	if err == nil && len(form) > 0 {
-		out := map[string]any{}
-		for key, values := range form {
-			if len(values) > 0 {
-				out[key] = values[0]
-			}
+}
+
+func (r *passRunner) processRequest(req capture.CapturedRequest) error {
+	matchURL, ok := req.MatchingURL(r.apiPrefix)
+	if !ok {
+		return nil
+	}
+
+	path := stripAPIPrefix(stripQueryString(matchURL), r.apiPrefix)
+	pathTemplateIndex := r.matchPathTemplate(path)
+	if pathTemplateIndex < 0 {
+		r.discoverPath(path)
+		return nil
+	}
+
+	return r.materializeEndpoint(req, matchURL, path, pathTemplateIndex)
+}
+
+func (r *passRunner) matchPathTemplate(path string) int {
+	for i, re := range r.pathRegexes {
+		if re.MatchString(path) {
+			return i
 		}
-		if len(out) > 0 {
-			return out, "application/x-www-form-urlencoded", true
-		}
 	}
-	return nil, "", false
+	return -1
 }
 
-func parseResponseBody(body []byte) (any, string, bool) {
-	var jsonVal any
-	if err := json.Unmarshal(body, &jsonVal); err == nil {
-		return jsonVal, "application/json", true
-	}
-	var msgpackVal any
-	if err := msgpack.Unmarshal(body, &msgpackVal); err == nil {
-		return msgpackVal, "application/msgpack", true
-	}
-	return nil, "", false
-}
-
-func pathToRegex(path string) *regexp.Regexp {
-	escaped := regexp.QuoteMeta(path)
-	escaped = strings.ReplaceAll(escaped, "\\{", "(?P<")
-	escaped = strings.ReplaceAll(escaped, "\\}", ">[^/]+)")
-	escaped = strings.ReplaceAll(escaped, "\\*", ".*")
-	re, err := regexp.Compile("^" + escaped + "$")
-	if err != nil {
-		return regexp.MustCompile("^$")
-	}
-	return re
-}
-
-func stripQueryString(rawURL string) string {
-	if i := strings.Index(rawURL, "?"); i >= 0 {
-		return rawURL[:i]
-	}
-	return rawURL
-}
-
-func stripAPIPrefix(rawURL, prefix string) string {
-	return strings.TrimPrefix(rawURL, prefix)
+func (r *passRunner) finalizeDiscovery() {
+	sort.Strings(r.newPathTemplates)
+	suggestions := buildSuggestedTemplates(r.newPathTemplates, r.paramRegex, r.opts.SuppressParams)
+	r.doc.XPathTemplates = append(r.doc.XPathTemplates, suggestions...)
+	r.doc.XPathTemplates = schema.FilterXPathTemplates(r.doc.XPathTemplates, r.doc.Paths)
+	r.doc.XPathTemplates = schema.DedupeStrings(r.doc.XPathTemplates)
 }
