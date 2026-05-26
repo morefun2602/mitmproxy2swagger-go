@@ -1,0 +1,1035 @@
+openapi: 3.0.0
+info:
+  title: /Users/bytedance/code/mitmproxy2swagger-go/testdata/captures/sklep.lisek.app.har Mitmproxy2Swagger
+  version: 1.0.0
+servers:
+  - description: The default server
+    url: https://api2.lisek.app
+paths:
+  /api/inventory/image:
+    get:
+      parameters:
+        - in: query
+          name: url
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: width
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: height
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: noEnlarge
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: GET image
+  /api/settings/countries:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    items:
+                      properties:
+                        areaCode:
+                          type: string
+                        countryCode:
+                          type: string
+                        maxPhoneLength:
+                          type: number
+                      type: object
+                    type: array
+                type: object
+          description: OK
+      summary: GET countries
+    options:
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS countries
+  /api/darkstores:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    items:
+                      properties:
+                        additionalInfoText:
+                          nullable: true
+                          type: object
+                        address:
+                          properties:
+                            city:
+                              type: string
+                            comments:
+                              type: string
+                            courierComment:
+                              type: string
+                            darkstoreId:
+                              type: number
+                            doorNo:
+                              type: string
+                            floor:
+                              type: string
+                            fullInfo:
+                              nullable: true
+                              type: object
+                            id:
+                              type: number
+                            isCurrent:
+                              type: boolean
+                            isCurrentNotVirtual:
+                              type: boolean
+                            isVirtual:
+                              type: boolean
+                            label:
+                              nullable: true
+                              type: object
+                            latitude:
+                              type: number
+                            longitude:
+                              type: number
+                            porch:
+                              type: string
+                            postalCode:
+                              type: string
+                            street:
+                              type: string
+                            streetNo:
+                              type: string
+                          type: object
+                        area:
+                          items:
+                            type: string
+                          type: array
+                        available:
+                          type: boolean
+                        courierSplitEnabled:
+                          type: boolean
+                        darkstoreRuntimeSettigs:
+                          properties:
+                            additionalBasketFees:
+                              properties:
+                                longDistanceFee:
+                                  nullable: true
+                                  type: object
+                                longDistanceFeeMinDistanceInM:
+                                  nullable: true
+                                  type: object
+                              type: object
+                            alcoholReceiptPrintingGroup:
+                              properties:
+                                groupName:
+                                  type: string
+                              type: object
+                            isAddressVisibleForCourier:
+                              nullable: true
+                              type: object
+                            isModifyStackSortOrderAllowed:
+                              type: boolean
+                            pharmacyReceiptPrintingGroup:
+                              properties:
+                                groupName:
+                                  type: string
+                              type: object
+                            pickerStackRemovePermission:
+                              type: string
+                            transportTypeForCouriers:
+                              nullable: true
+                              type: object
+                          type: object
+                        id:
+                          type: number
+                        identifier:
+                          type: string
+                        isVirtualSplitEnabled:
+                          type: boolean
+                        name:
+                          type: string
+                        openingTime:
+                          properties:
+                            closeHour:
+                              type: number
+                            closeMinute:
+                              type: number
+                            localTime:
+                              type: boolean
+                            openHour:
+                              type: number
+                            openMinute:
+                              type: number
+                          type: object
+                        orderStackingEnabled:
+                          type: string
+                        sliderId:
+                          type: number
+                        sortKey:
+                          type: number
+                        unavailableFromTime:
+                          nullable: true
+                          type: object
+                        unavailableMessage:
+                          type: string
+                        unavailableUntilTime:
+                          type: string
+                        virtual:
+                          type: boolean
+                      type: object
+                    type: array
+                type: object
+          description: OK
+      summary: GET darkstores
+    options:
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS darkstores
+  /api/darkstores/default:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    properties:
+                      additionalInfoText:
+                        nullable: true
+                        type: object
+                      address:
+                        properties:
+                          city:
+                            type: string
+                          comments:
+                            type: string
+                          courierComment:
+                            nullable: true
+                            type: object
+                          darkstoreId:
+                            type: number
+                          doorNo:
+                            type: string
+                          floor:
+                            type: string
+                          fullInfo:
+                            nullable: true
+                            type: object
+                          id:
+                            type: number
+                          isCurrent:
+                            type: boolean
+                          isCurrentNotVirtual:
+                            type: boolean
+                          isVirtual:
+                            type: boolean
+                          label:
+                            nullable: true
+                            type: object
+                          latitude:
+                            type: number
+                          longitude:
+                            type: number
+                          porch:
+                            type: string
+                          postalCode:
+                            type: string
+                          street:
+                            type: string
+                          streetNo:
+                            type: string
+                        type: object
+                      area:
+                        items:
+                          type: string
+                        type: array
+                      available:
+                        type: boolean
+                      courierSplitEnabled:
+                        type: boolean
+                      darkstoreRuntimeSettigs:
+                        properties:
+                          additionalBasketFees:
+                            properties:
+                              longDistanceFee:
+                                nullable: true
+                                type: object
+                              longDistanceFeeMinDistanceInM:
+                                nullable: true
+                                type: object
+                            type: object
+                          alcoholReceiptPrintingGroup:
+                            properties:
+                              groupName:
+                                type: string
+                            type: object
+                          isAddressVisibleForCourier:
+                            type: boolean
+                          isModifyStackSortOrderAllowed:
+                            type: boolean
+                          pharmacyReceiptPrintingGroup:
+                            properties:
+                              groupName:
+                                type: string
+                            type: object
+                          pickerStackRemovePermission:
+                            type: string
+                          transportTypeForCouriers:
+                            nullable: true
+                            type: object
+                        type: object
+                      id:
+                        type: number
+                      identifier:
+                        type: string
+                      isVirtualSplitEnabled:
+                        type: boolean
+                      name:
+                        type: string
+                      openingTime:
+                        properties:
+                          closeHour:
+                            type: number
+                          closeMinute:
+                            type: number
+                          localTime:
+                            type: boolean
+                          openHour:
+                            type: number
+                          openMinute:
+                            type: number
+                        type: object
+                      orderStackingEnabled:
+                        type: string
+                      sliderId:
+                        type: number
+                      sortKey:
+                        type: number
+                      unavailableFromTime:
+                        nullable: true
+                        type: object
+                      unavailableMessage:
+                        type: string
+                      unavailableUntilTime:
+                        type: string
+                      virtual:
+                        type: boolean
+                    type: object
+                type: object
+          description: OK
+      summary: GET default
+    options:
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS default
+  /api/users/anonymous:
+    options:
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS anonymous
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    properties:
+                      expires:
+                        type: number
+                      refreshToken:
+                        type: string
+                      token:
+                        type: string
+                      user:
+                        properties:
+                          anonymous:
+                            type: boolean
+                          anonymousClientSource:
+                            type: string
+                          email:
+                            type: string
+                          firstname:
+                            type: string
+                          franchises:
+                            nullable: true
+                            type: object
+                          id:
+                            type: number
+                          lastname:
+                            type: string
+                          newsletter:
+                            type: boolean
+                          newsletterEmail:
+                            type: boolean
+                          newsletterPhone:
+                            type: boolean
+                          phone:
+                            type: string
+                          registerClientSource:
+                            type: string
+                          roles:
+                            items:
+                              type: string
+                            type: array
+                          sendInfo:
+                            type: boolean
+                        type: object
+                    type: object
+                type: object
+          description: OK
+      summary: POST anonymous
+  /api/inventory/settings:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    properties:
+                      imageTransformationUrl:
+                        type: string
+                      productBaseUrl:
+                        type: string
+                      storageBaseUrl:
+                        type: string
+                    type: object
+                type: object
+          description: OK
+      summary: GET settings
+    options:
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS settings
+  /api/transactionsettings:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    properties:
+                      alcoholCategories:
+                        type: string
+                      deliveryCost:
+                        type: number
+                      discountPercent:
+                        type: number
+                      discountThreshold:
+                        type: number
+                      excludeFromAlcoholAndVerifyAgeEans:
+                        type: string
+                      freeShippingThreshold:
+                        type: number
+                      maxStackSize:
+                        type: number
+                      maxStackTimeInMins:
+                        type: number
+                      maxWeight:
+                        type: number
+                      minOrder:
+                        type: number
+                      paperBagEan:
+                        type: string
+                      paperBagFee:
+                        type: number
+                      paperBagInfiniteStock:
+                        type: boolean
+                      paperBagPerXItems:
+                        type: number
+                      paperBagPerXPrice:
+                        nullable: true
+                        type: object
+                      startStackFromClosest:
+                        type: boolean
+                      verifyAgeCategories:
+                        type: string
+                    type: object
+                type: object
+          description: OK
+      summary: GET transactionsettings
+    options:
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS transactionsettings
+  /api/users/profile:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    properties:
+                      anonymous:
+                        type: boolean
+                      dateOfBirth:
+                        nullable: true
+                        type: object
+                      email:
+                        type: string
+                      firstName:
+                        type: string
+                      lastName:
+                        type: string
+                      newsletter:
+                        type: boolean
+                      newsletterEmail:
+                        type: boolean
+                      newsletterPhone:
+                        type: boolean
+                      phone:
+                        type: string
+                      sendInfo:
+                        type: boolean
+                      smsCode:
+                        nullable: true
+                        type: object
+                    type: object
+                type: object
+          description: OK
+      summary: GET profile
+    options:
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS profile
+  /api/deliveryfees:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    items:
+                      properties:
+                        fee:
+                          type: number
+                        sortKey:
+                          type: number
+                        valueFrom:
+                          type: number
+                        valueTo:
+                          type: number
+                      type: object
+                    type: array
+                type: object
+          description: OK
+      summary: GET deliveryfees
+    options:
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS deliveryfees
+  /api/inventory/promo/{id}/full:
+    get:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    items:
+                      properties:
+                        ean:
+                          type: string
+                        product:
+                          properties:
+                            contact:
+                              nullable: true
+                              type: object
+                            dietary:
+                              type: string
+                            dimensions:
+                              type: string
+                            ean:
+                              type: string
+                            headline:
+                              type: string
+                            id:
+                              type: number
+                            imagePath:
+                              type: string
+                            imagePathLastComponent:
+                              type: string
+                            information:
+                              type: string
+                            ingredients:
+                              type: string
+                            isAlcohol:
+                              type: boolean
+                            isBundle:
+                              type: boolean
+                            isCold:
+                              type: boolean
+                            isHit:
+                              type: boolean
+                            isNew:
+                              type: boolean
+                            isPromo:
+                              type: boolean
+                            isThermalBagRequired:
+                              type: boolean
+                            mainCategoryId:
+                              type: number
+                            maxQuantity:
+                              type: number
+                            misk:
+                              type: string
+                            nutrition:
+                              type: string
+                            packAmount:
+                              type: number
+                            packInfo:
+                              type: string
+                            packUnit:
+                              type: string
+                            pickInfo:
+                              properties:
+                                level:
+                                  type: number
+                                levelColor:
+                                  nullable: true
+                                  type: object
+                                path:
+                                  type: number
+                                shelf:
+                                  type: number
+                              type: object
+                            price:
+                              type: number
+                            priceBeforePromo:
+                              nullable: true
+                              type: object
+                            pricePerUnitText:
+                              type: string
+                            promoText:
+                              type: string
+                            quantity:
+                              type: number
+                            storage:
+                              type: string
+                            subCategoryId:
+                              type: number
+                            subTitle:
+                              type: string
+                            supplier:
+                              type: string
+                            title:
+                              type: string
+                            vat:
+                              type: number
+                            verifyAge:
+                              type: boolean
+                            weight:
+                              type: string
+                          type: object
+                        type:
+                          type: string
+                      type: object
+                    type: array
+                type: object
+          description: OK
+      summary: GET full by id
+    options:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS full by id
+  /api/sliders/{id}:
+    get:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    items:
+                      properties:
+                        categoryId:
+                          nullable: true
+                          type: object
+                        containsAlco:
+                          type: boolean
+                        isExternalUrl:
+                          type: boolean
+                        link:
+                          type: string
+                        mainCategoryId:
+                          nullable: true
+                          type: object
+                        position:
+                          type: number
+                        redirectUrl:
+                          nullable: true
+                          type: object
+                        redirectable:
+                          type: boolean
+                        type:
+                          type: number
+                        webRedirectUrl:
+                          nullable: true
+                          type: object
+                      type: object
+                    type: array
+                type: object
+          description: OK
+      summary: GET sliders by id
+    options:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS sliders by id
+  /api/inventory/{id}/categories/{id1}/products:
+    get:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id1
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    properties:
+                      alcohol:
+                        type: boolean
+                      backgroundColor:
+                        type: string
+                      categorySeo:
+                        nullable: true
+                        type: object
+                      iconPath:
+                        type: string
+                      id:
+                        type: number
+                      imagePath:
+                        type: string
+                      key:
+                        type: string
+                      mobileCategoryView:
+                        nullable: true
+                        type: object
+                      mobileMainCategoryView:
+                        nullable: true
+                        type: object
+                      name:
+                        type: string
+                      number:
+                        type: number
+                      order:
+                        type: number
+                      parentId:
+                        nullable: true
+                        type: object
+                      products:
+                        items:
+                          properties:
+                            bundleId:
+                              nullable: true
+                              type: object
+                            categoryId:
+                              type: number
+                            ean:
+                              type: string
+                            headline:
+                              type: string
+                            id:
+                              type: number
+                            imagePath:
+                              type: string
+                            isAlcohol:
+                              type: boolean
+                            isBundle:
+                              type: boolean
+                            isCold:
+                              type: boolean
+                            isHit:
+                              type: boolean
+                            isNew:
+                              type: boolean
+                            isPromo:
+                              type: boolean
+                            isSubCategorySorted:
+                              type: boolean
+                            maxQuantity:
+                              type: number
+                            packAmount:
+                              type: number
+                            packInfo:
+                              type: string
+                            packUnit:
+                              type: string
+                            price:
+                              type: number
+                            priceBeforePromo:
+                              nullable: true
+                              type: object
+                            pricePerUnitText:
+                              nullable: true
+                              type: object
+                            promoText:
+                              type: string
+                            quantity:
+                              type: number
+                            showOutOfStock:
+                              type: boolean
+                            sortOrder:
+                              type: number
+                            stockItemId:
+                              type: number
+                            subCategoryId:
+                              type: number
+                            subCategoryName:
+                              type: string
+                            subTitle:
+                              type: string
+                            title:
+                              type: string
+                            vat:
+                              type: number
+                            verifyAge:
+                              type: boolean
+                            weight:
+                              type: string
+                          type: object
+                        type: array
+                      stockItemId:
+                        type: number
+                      subCategories:
+                        items: {}
+                        type: array
+                      verifyAge:
+                        type: boolean
+                      webCategoryMainView:
+                        nullable: true
+                        type: object
+                    type: object
+                type: object
+          description: OK
+      summary: GET products by id
+    options:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id1
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS products by id
+  /api/inventory/{id}/stocks:
+    get:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    items:
+                      properties:
+                        e:
+                          type: string
+                        q:
+                          type: number
+                      type: object
+                    type: array
+                type: object
+          description: OK
+      summary: GET stocks by id
+    options:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS stocks by id
+x-path-templates:
+  - /api/inventory/5/categories/31/products
+  - /api/inventory/5/categories/73/products
+  - /api/inventory/5/stocks
+  - /api/inventory/promo/5/full
+  - /api/sliders/5

@@ -1,0 +1,53 @@
+# Golden Schema 用例定义（对照 Python v0.14.0 mitmproxy2swagger_e2e_test）
+#
+# capture：相对仓库根目录的路径
+# api_prefix：-p 参数
+# extra_args：额外 CLI 参数（可选）
+#
+# 生成命令：
+#   go run ./cmd/generategolden
+# 校验命令（对比 testdata/golden/ 与当前 Go 实现输出）：
+#   go run ./cmd/generategolden -verify
+
+cases:
+  - id: flow_httpbin
+    capture: testdata/captures/test_flows
+    api_prefix: https://httpbin.org/
+    extra_args:
+      - --format
+      - flow
+
+  - id: flow_form_data
+    capture: testdata/captures/form_data_flows
+    api_prefix: https://httpbin.org/
+    extra_args:
+      - --format
+      - flow
+
+  - id: flow_generic_keys
+    capture: testdata/captures/generic_keys_flows
+    api_prefix: http://localhost:8082/
+    extra_args:
+      - --format
+      - flow
+
+  - id: flow_form_data_headers
+    capture: testdata/captures/form_data_flows
+    api_prefix: https://httpbin.org/
+    extra_args:
+      - --format
+      - flow
+      - --headers
+
+  - id: flow_msgpack
+    capture: testdata/captures/msgpack_flows
+    api_prefix: http://localhost:8082/
+    extra_args:
+      - --format
+      - flow
+
+  # HAR 体积较大（~17MB），存放在 testdata/captures/
+  - id: har_lisek
+    capture: testdata/captures/sklep.lisek.app.har
+    api_prefix: https://api2.lisek.app/
+    extra_args: []

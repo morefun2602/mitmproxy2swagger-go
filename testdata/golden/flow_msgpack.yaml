@@ -1,0 +1,40 @@
+openapi: 3.0.0
+info:
+  title: /Users/bytedance/code/mitmproxy2swagger-go/testdata/captures/msgpack_flows
+    Mitmproxy2Swagger
+  version: 1.0.0
+servers:
+- url: http://localhost:8082
+  description: The default server
+paths:
+  /:
+    post:
+      summary: 'POST '
+      responses:
+        '200':
+          description: OK
+          content:
+            application/msgpack:
+              schema:
+                type: object
+                properties:
+                  field1:
+                    type: string
+                  field2:
+                    type: string
+                  new_field:
+                    type: string
+      requestBody:
+        content:
+          application/msgpack:
+            schema:
+              type: object
+              properties:
+                field1:
+                  type: string
+                field2:
+                  type: string
+x-path-templates:
+# Remove the ignore: prefix to generate an endpoint with its URL
+# Lines that are closer to the top take precedence, the matching is greedy
+  []

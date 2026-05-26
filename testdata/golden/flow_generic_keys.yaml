@@ -1,0 +1,125 @@
+openapi: 3.0.0
+info:
+  title: /Users/bytedance/code/mitmproxy2swagger-go/testdata/captures/generic_keys_flows
+    Mitmproxy2Swagger
+  version: 1.0.0
+servers:
+- url: http://localhost:8082
+  description: The default server
+paths:
+  /:
+    post:
+      summary: 'POST '
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  numeric:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        lorem:
+                          type: string
+                        dolor:
+                          type: string
+                        amet:
+                          type: string
+                  uuid:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        lorem:
+                          type: string
+                        dolor:
+                          type: string
+                        amet:
+                          type: string
+                  mixed:
+                    type: object
+                    properties:
+                      '1234':
+                        type: object
+                        properties:
+                          lorem:
+                            type: string
+                          dolor:
+                            type: string
+                          amet:
+                            type: string
+                      123e4567-e89b-12d3-a456-426614174000:
+                        type: object
+                        properties:
+                          lorem:
+                            type: string
+                          dolor:
+                            type: string
+                          amet:
+                            type: string
+                      '0000':
+                        type: object
+                        properties:
+                          lorem:
+                            type: string
+                          dolor:
+                            type: string
+                          amet:
+                            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                numeric:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      lorem:
+                        type: string
+                      dolor:
+                        type: string
+                      amet:
+                        type: string
+                uuid:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      lorem:
+                        type: string
+                      dolor:
+                        type: string
+                      amet:
+                        type: string
+                mixed:
+                  type: object
+                  properties:
+                    '1234':
+                      type: object
+                      properties:
+                        lorem:
+                          type: string
+                        dolor:
+                          type: string
+                        amet:
+                          type: string
+                    123e4567-e89b-12d3-a456-426614174000:
+                      type: object
+                      properties:
+                        lorem:
+                          type: string
+                        dolor:
+                          type: string
+                        amet:
+                          type: string
+x-path-templates:
+# Remove the ignore: prefix to generate an endpoint with its URL
+# Lines that are closer to the top take precedence, the matching is greedy
+  []

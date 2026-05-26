@@ -1,0 +1,71 @@
+openapi: 3.0.0
+info:
+  title: /Users/bytedance/code/mitmproxy2swagger-go/testdata/captures/form_data_flows
+    Mitmproxy2Swagger
+  version: 1.0.0
+servers:
+- url: https://httpbin.org
+  description: The default server
+paths:
+  /post:
+    post:
+      summary: POST post
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  args:
+                    type: object
+                    properties: {}
+                  data:
+                    type: string
+                  files:
+                    type: object
+                    properties: {}
+                  form:
+                    type: object
+                    properties:
+                      param1:
+                        type: string
+                      param2:
+                        type: string
+                  headers:
+                    type: object
+                    properties:
+                      Accept:
+                        type: string
+                      Content-Length:
+                        type: string
+                      Content-Type:
+                        type: string
+                      Host:
+                        type: string
+                      User-Agent:
+                        type: string
+                      X-Amzn-Trace-Id:
+                        type: string
+                  json:
+                    type: object
+                    nullable: true
+                  origin:
+                    type: string
+                  url:
+                    type: string
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                param1:
+                  type: string
+                param2:
+                  type: string
+x-path-templates:
+# Remove the ignore: prefix to generate an endpoint with its URL
+# Lines that are closer to the top take precedence, the matching is greedy
+  []

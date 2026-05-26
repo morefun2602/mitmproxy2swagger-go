@@ -1,0 +1,149 @@
+info:
+  title: /Users/bytedance/code/mitmproxy2swagger-go/testdata/captures/test_flows Mitmproxy2Swagger
+  version: 1.0.0
+openapi: 3.0.0
+paths:
+  /get:
+    get:
+      summary: GET get
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  args:
+                    type: object
+                    properties: {}
+                  headers:
+                    type: object
+                    properties:
+                      Accept:
+                        type: string
+                      Host:
+                        type: string
+                      User-Agent:
+                        type: string
+                      X-Amzn-Trace-Id:
+                        type: string
+                  origin:
+                    type: string
+                  url:
+                    type: string
+  /post:
+    post:
+      summary: POST post
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  args:
+                    type: object
+                    properties: {}
+                  data:
+                    type: string
+                  files:
+                    type: object
+                    properties: {}
+                  form:
+                    type: object
+                    properties:
+                      '{"a":1}':
+                        type: string
+                  headers:
+                    type: object
+                    properties:
+                      Accept:
+                        type: string
+                      Content-Length:
+                        type: string
+                      Content-Type:
+                        type: string
+                      Host:
+                        type: string
+                      User-Agent:
+                        type: string
+                      X-Amzn-Trace-Id:
+                        type: string
+                  json:
+                    type: object
+                    nullable: true
+                  origin:
+                    type: string
+                  url:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                a:
+                  type: number
+  /patch:
+    patch:
+      summary: PATCH patch
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  args:
+                    type: object
+                    properties: {}
+                  data:
+                    type: string
+                  files:
+                    type: object
+                    properties: {}
+                  form:
+                    type: object
+                    properties:
+                      '{"a":1}':
+                        type: string
+                  headers:
+                    type: object
+                    properties:
+                      Accept:
+                        type: string
+                      Content-Length:
+                        type: string
+                      Content-Type:
+                        type: string
+                      Host:
+                        type: string
+                      User-Agent:
+                        type: string
+                      X-Amzn-Trace-Id:
+                        type: string
+                  json:
+                    type: object
+                    nullable: true
+                  origin:
+                    type: string
+                  url:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                a:
+                  type: number
+servers:
+- description: The default server
+  url: https://httpbin.org
+x-path-templates:
+# Remove the ignore: prefix to generate an endpoint with its URL
+# Lines that are closer to the top take precedence, the matching is greedy
+  []
