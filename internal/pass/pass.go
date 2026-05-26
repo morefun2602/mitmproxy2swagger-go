@@ -2,13 +2,16 @@ package pass
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture"
+	captureopen "github.com/morefun2602/mitmproxy2swagger-go/internal/capture/open"
 	"github.com/morefun2602/mitmproxy2swagger-go/internal/schema"
 	"github.com/morefun2602/mitmproxy2swagger-go/internal/swaggerutil"
 	"github.com/vmihailenco/msgpack/v5"
@@ -35,7 +38,7 @@ func Run(opts Options) error {
 
 	reader := opts.Reader
 	if reader == nil {
-		reader, err = OpenReader(opts.Input, opts.Format, nil)
+		reader, err = captureopen.OpenReader(opts.Input, opts.Format, nil)
 		if err != nil {
 			return err
 		}
@@ -183,7 +186,7 @@ func loadDocument(outputPath, inputPath string) (*schema.Document, error) {
 	if err == nil {
 		return doc, nil
 	}
-	if !osIsNotExist(err) {
+	if !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
 	fmt.Println("No existing swagger file found. Creating new one.")
