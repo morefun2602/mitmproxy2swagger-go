@@ -8,10 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
+	"time"
 
-	"github.com/morefun2602/mitmproxy2swagger-go/pkg/enrich"
 	"github.com/morefun2602/mitmproxy2swagger-go/internal/golden"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/enrich"
 	"github.com/morefun2602/mitmproxy2swagger-go/pkg/pass"
 	"github.com/morefun2602/mitmproxy2swagger-go/pkg/schema"
 	"github.com/openai/openai-go/v3"
@@ -144,6 +146,160 @@ func TestEnrichVerticalSlice(t *testing.T) {
 	}
 	if get["operationId"] != "listItems" {
 		t.Fatalf("operationId = %#v", get["operationId"])
+	}
+}
+
+func TestEnrichSkipsFailedEndpoint(t *testing.T) {
+	root := repoRoot(t)
+	capture := filepath.Join(root, "testdata", "captures", "minimal.har")
+	dir := t.TempDir()
+	schemaPath := filepath.Join(dir, "schema.yaml")
+	outPath := filepath.Join(dir, "enriched.yaml")
+
+	if err := pass.Run(pass.Options{
+		Input:     capture,
+		Output:    schemaPath,
+		APIPrefix: "https://api.example.com/v1",
+		Format:    "har",
+	}); err != nil {
+		t.Fatalf("pass: %v", err)
+	}
+	if err := golden.StripIgnorePrefixes(schemaPath); err != nil {
+		t.Fatalf("curation: %v", err)
+	}
+	if err := pass.Run(pass.Options{
+		Input:     capture,
+		Output:    schemaPath,
+		APIPrefix: "https://api.example.com/v1",
+		Format:    "har",
+	}); err != nil {
+		t.Fatalf("second pass: %v", err)
+	}
+
+	okResult, err := json.Marshal(enrich.EnrichmentResult{
+		Summary:     "List items",
+		Description: "Returns a collection of items.",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		content := string(okResult)
+		if calls == 2 {
+			content = "```json\n{not valid}\n```"
+		}
+		resp := map[string]any{
+			"id": "chatcmpl-test", "object": "chat.completion", "created": 0, "model": "gpt-4o-mini",
+			"choices": []map[string]any{{
+				"index": 0, "message": map[string]any{"role": "assistant", "content": content}, "finish_reason": "stop",
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	t.Cleanup(srv.Close)
+
+	client := openai.NewClient(
+		option.WithBaseURL(srv.URL+"/v1"),
+		option.WithAPIKey("test-key"),
+	)
+	if err := enrich.Run(context.Background(), enrich.Options{
+		Capture:    capture,
+		SchemaPath: schemaPath,
+		Output:     outPath,
+		APIPrefix:  "https://api.example.com/v1",
+		Format:     "har",
+		Samples:    1,
+		Force:      true,
+		Client:     &client,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	doc, err := schema.Load(outPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ops, ok := doc.PathOperations("/items")
+	if !ok {
+		t.Fatal("missing /items")
+	}
+	get, _ := ops["get"].(map[string]any)
+	if get["summary"] != "List items" {
+		t.Fatalf("GET summary = %#v", get["summary"])
+	}
+	post, _ := ops["post"].(map[string]any)
+	if post["summary"] != "POST items" {
+		t.Fatalf("POST should be unchanged after skip, summary = %#v", post["summary"])
+	}
+}
+
+func TestEnrichConcurrencyLimit(t *testing.T) {
+	root := repoRoot(t)
+	capture := filepath.Join(root, "testdata", "captures", "minimal.har")
+	dir := t.TempDir()
+	schemaPath := filepath.Join(dir, "schema.yaml")
+	outPath := filepath.Join(dir, "enriched.yaml")
+	schemaYAML := `openapi: 3.0.0
+info:
+  title: test
+  version: 1.0.0
+paths:
+  /a: { get: { responses: { "200": { description: ok } } } }
+  /b: { get: { responses: { "200": { description: ok } } } }
+  /c: { get: { responses: { "200": { description: ok } } } }
+  /d: { get: { responses: { "200": { description: ok } } } }
+`
+	if err := os.WriteFile(schemaPath, []byte(schemaYAML), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	okResult, err := json.Marshal(enrich.EnrichmentResult{Summary: "ok"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var active atomic.Int32
+	var maxActive atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cur := active.Add(1)
+		for {
+			prev := maxActive.Load()
+			if cur <= prev || maxActive.CompareAndSwap(prev, cur) {
+				break
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+		active.Add(-1)
+		resp := map[string]any{
+			"id": "chatcmpl-test", "object": "chat.completion", "created": 0, "model": "gpt-4o-mini",
+			"choices": []map[string]any{{
+				"index": 0, "message": map[string]any{"role": "assistant", "content": string(okResult)}, "finish_reason": "stop",
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	t.Cleanup(srv.Close)
+
+	client := openai.NewClient(
+		option.WithBaseURL(srv.URL+"/v1"),
+		option.WithAPIKey("test-key"),
+	)
+	if err := enrich.Run(context.Background(), enrich.Options{
+		Capture:     capture,
+		SchemaPath:  schemaPath,
+		Output:      outPath,
+		APIPrefix:   "https://api.example.com/v1",
+		Format:      "har",
+		Concurrency: 2,
+		Client:      &client,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if maxActive.Load() > 2 {
+		t.Fatalf("max concurrent requests = %d, want <= 2", maxActive.Load())
 	}
 }
 

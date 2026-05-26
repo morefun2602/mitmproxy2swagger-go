@@ -23,6 +23,7 @@ func newEnrichCmd() *cobra.Command {
 		baseURL     string
 		apiKey      string
 		model       string
+		concurrency int
 	)
 
 	cmd := &cobra.Command{
@@ -46,6 +47,7 @@ func newEnrichCmd() *cobra.Command {
 				BaseURL:        envOr(baseURL, os.Getenv("OPENAI_BASE_URL")),
 				APIKey:         envOr(apiKey, os.Getenv("OPENAI_API_KEY")),
 				Model:          envOr(model, os.Getenv("OPENAI_MODEL")),
+				Concurrency:    concurrency,
 				OnProgress: func(cur, total int, method, path string) {
 					fmt.Fprintf(cmd.OutOrStdout(), "[%d/%d] %s %s\n", cur, total, method, path)
 				},
@@ -76,6 +78,7 @@ func newEnrichCmd() *cobra.Command {
 	flags.StringVar(&baseURL, "base-url", "", "OpenAI-compatible API base URL (default $OPENAI_BASE_URL or https://api.openai.com/v1)")
 	flags.StringVar(&apiKey, "api-key", "", "LLM API key (default $OPENAI_API_KEY)")
 	flags.StringVar(&model, "model", "", "LLM model name (default $OPENAI_MODEL or gpt-4o-mini)")
+	flags.IntVar(&concurrency, "concurrency", 10, "Max concurrent LLM requests per enrich run")
 
 	return cmd
 }

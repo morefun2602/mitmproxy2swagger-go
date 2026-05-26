@@ -6,12 +6,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/morefun2602/mitmproxy2swagger-go/pkg/capture"
 	captureopen "github.com/morefun2602/mitmproxy2swagger-go/pkg/capture/open"
 	"github.com/morefun2602/mitmproxy2swagger-go/pkg/schema"
 	"github.com/openai/openai-go/v3"
 )
+
+const defaultConcurrency = 10
 
 // EndpointProgressFunc is called once per Endpoint before enrichment work starts.
 type EndpointProgressFunc func(current, total int, method, pathTemplate string)
@@ -30,9 +34,17 @@ type Options struct {
 	Model          string
 	BaseURL        string
 	APIKey         string
+	Concurrency    int
 	Reader         capture.Reader
 	Client         *openai.Client
 	OnProgress     EndpointProgressFunc
+}
+
+type enrichJob struct {
+	pathIdx      int
+	method       string
+	pathTemplate string
+	userPrompt   string
 }
 
 func Run(ctx context.Context, opts Options) error {
@@ -70,9 +82,31 @@ func Run(ctx context.Context, opts Options) error {
 		}
 	}
 
+	jobs, skipped, promptCount, err := collectEnrichJobs(doc, samples, opts)
+	if err != nil {
+		return err
+	}
 	total := countEndpoints(doc)
-	current := 0
-	promptCount := 0
+
+	if opts.EmitPromptsDir != "" {
+		if promptCount == 0 {
+			return fmt.Errorf("no endpoints in schema paths (run Pass twice: first pass → curation → second pass)")
+		}
+		return nil
+	}
+
+	skipped += runEnrichmentJobs(ctx, opts, client, doc, jobs, total)
+
+	if skipped > 0 {
+		fmt.Fprintf(os.Stderr, "enrich: skipped %d/%d endpoint(s); saved partial result to %s\n", skipped, total, opts.Output)
+	}
+
+	return doc.Save(opts.Output)
+}
+
+func collectEnrichJobs(doc *schema.Document, samples map[endpointKey][]RequestSample, opts Options) (jobs []enrichJob, skipped int, promptCount int, err error) {
+	total := countEndpoints(doc)
+	progress := 0
 	for i, item := range doc.Paths {
 		pathTemplate := fmt.Sprint(item.Key)
 		ops, ok := item.Value.(map[string]any)
@@ -87,40 +121,99 @@ func Run(ctx context.Context, opts Options) error {
 			if !ok {
 				continue
 			}
-			current++
-			if opts.OnProgress != nil {
-				opts.OnProgress(current, total, strings.ToUpper(method), pathTemplate)
-			}
 			key := endpointKey{pathTemplate: pathTemplate, method: strings.ToLower(method)}
-			userPrompt, err := buildUserPrompt(pathTemplate, method, op, samples[key])
-			if err != nil {
-				return err
+			userPrompt, buildErr := buildUserPrompt(pathTemplate, method, op, samples[key])
+			if buildErr != nil {
+				fmt.Fprintf(os.Stderr, "warn: enrich %s %s: %v (skipped)\n", strings.ToUpper(method), pathTemplate, buildErr)
+				skipped++
+				continue
 			}
 			if opts.EmitPromptsDir != "" {
 				if err := writePromptFile(opts.EmitPromptsDir, pathTemplate, method, userPrompt); err != nil {
-					return err
+					return nil, skipped, promptCount, err
 				}
 				promptCount++
+				progress++
+				if opts.OnProgress != nil {
+					opts.OnProgress(progress, total, strings.ToUpper(method), pathTemplate)
+				}
 				continue
 			}
-			result, err := callEnrichmentLLM(ctx, client, opts.Model, systemPrompt, userPrompt)
+			jobs = append(jobs, enrichJob{
+				pathIdx:      i,
+				method:       method,
+				pathTemplate: pathTemplate,
+				userPrompt:   userPrompt,
+			})
+		}
+	}
+	return jobs, skipped, promptCount, nil
+}
+
+func runEnrichmentJobs(ctx context.Context, opts Options, client openai.Client, doc *schema.Document, jobs []enrichJob, total int) int {
+	if len(jobs) == 0 {
+		return 0
+	}
+
+	conc := opts.Concurrency
+	if conc <= 0 {
+		conc = defaultConcurrency
+	}
+	if conc > len(jobs) {
+		conc = len(jobs)
+	}
+
+	sem := make(chan struct{}, conc)
+	var wg sync.WaitGroup
+	var skipped atomic.Int32
+	var progress atomic.Int32
+	var mu sync.Mutex
+
+	for _, job := range jobs {
+		wg.Add(1)
+		go func(job enrichJob) {
+			defer wg.Done()
+
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			if ctx.Err() != nil {
+				skipped.Add(1)
+				return
+			}
+
+			cur := int(progress.Add(1))
+			if opts.OnProgress != nil {
+				opts.OnProgress(cur, total, strings.ToUpper(job.method), job.pathTemplate)
+			}
+
+			result, err := callEnrichmentLLM(ctx, client, opts.Model, systemPrompt, job.userPrompt)
 			if err != nil {
-				return fmt.Errorf("enrich %s %s: %w", strings.ToUpper(method), pathTemplate, err)
+				fmt.Fprintf(os.Stderr, "warn: enrich %s %s: %v (skipped)\n", strings.ToUpper(job.method), job.pathTemplate, err)
+				skipped.Add(1)
+				return
+			}
+
+			mu.Lock()
+			ops, ok := doc.Paths[job.pathIdx].Value.(map[string]any)
+			if !ok {
+				mu.Unlock()
+				skipped.Add(1)
+				return
+			}
+			op, ok := ops[job.method].(map[string]any)
+			if !ok {
+				mu.Unlock()
+				skipped.Add(1)
+				return
 			}
 			applyEnrichment(op, result, opts.Force)
-			ops[method] = op
-		}
-		doc.Paths[i].Value = ops
+			mu.Unlock()
+		}(job)
 	}
 
-	if opts.EmitPromptsDir != "" {
-		if promptCount == 0 {
-			return fmt.Errorf("no endpoints in schema paths (run Pass twice: first pass → curation → second pass)")
-		}
-		return nil
-	}
-
-	return doc.Save(opts.Output)
+	wg.Wait()
+	return int(skipped.Load())
 }
 
 func countEndpoints(doc *schema.Document) int {

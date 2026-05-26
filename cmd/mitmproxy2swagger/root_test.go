@@ -40,6 +40,36 @@ func TestPassRequiresFlags(t *testing.T) {
 	}
 }
 
+func TestCurateRequiresFlags(t *testing.T) {
+	root := NewRoot()
+	root.SetOut(&bytes.Buffer{})
+	root.SetErr(&bytes.Buffer{})
+	root.SetArgs([]string{"curate"})
+
+	err := root.Execute()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "required flag") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestAuthObserveRequiresFlags(t *testing.T) {
+	root := NewRoot()
+	root.SetOut(&bytes.Buffer{})
+	root.SetErr(&bytes.Buffer{})
+	root.SetArgs([]string{"auth", "observe"})
+
+	err := root.Execute()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "required") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestEnrichRequiresFlags(t *testing.T) {
 	root := NewRoot()
 	root.SetOut(&bytes.Buffer{})

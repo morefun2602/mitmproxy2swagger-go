@@ -43,3 +43,14 @@ func TestParseEnrichmentResult(t *testing.T) {
 		t.Fatalf("unexpected parse: %#v", got)
 	}
 }
+
+func TestParseEnrichmentResult_markdownFence(t *testing.T) {
+	raw := []byte("```json\n{\"summary\":\"List items\",\"description\":\"desc\",\"tags\":[],\"operationId\":\"\",\"parameterDescriptions\":{},\"requestBodyDescription\":\"\"}\n```")
+	got, err := parseEnrichmentResult(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Summary != "List items" {
+		t.Fatalf("unexpected parse: %#v", got)
+	}
+}

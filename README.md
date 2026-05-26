@@ -29,6 +29,8 @@ go build -o mitmproxy2swagger ./cmd/mitmproxy2swagger
 Subcommands:
 
 - `pass` — run a Pass over a capture file and update the OpenAPI schema
+- `curate` — cluster `x-path-templates` (`--auto`), LLM merge suggestions (`--llm-suggest`), apply edited suggestions (`--apply-suggestions`); see [ADR-0007](docs/adr/0007-curate-curation-assist.md)
+- `auth observe` / `auth apply` — two-phase authentication: observe credentials into `auth-observations.yaml`, then after curl verification write `components.securitySchemes` and `security`; see [ADR-0008](docs/adr/0008-auth-observation-two-phase.md)
 - `enrich` — LLM semantic enrichment (see [ADR-0003](docs/adr/0003-llm-enrichment-subcommand.md))
 - `version` — print build version
 - `completion` — generate shell completion scripts
@@ -117,6 +119,8 @@ err := pass.Run(pass.Options{
 | Package | Main exports |
 |---------|----------------|
 | `pkg/pass` | `Run`, `Options` |
+| `pkg/curate` | `Run`, `Options`, `AutoTemplates`, `LoadSuggestionsFile` |
+| `pkg/auth` | `RunObserve`, `RunApply`, `Options`, `ApplyOptions`, `LoadObservationsFile` |
 | `pkg/enrich` | `Run`, `Options`, `EnrichmentResult`, `RedactMode` |
 | `pkg/capture` | `Reader`, `CapturedRequest`, `ProgressFunc` |
 | `pkg/capture/open` | `OpenReader` |

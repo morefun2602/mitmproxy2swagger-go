@@ -54,6 +54,7 @@ func Run(opts Options) error {
 	doc.EnsureDefaults(apiPrefix)
 
 	pathTemplates := doc.PathTemplates()
+	schema.SortPathTemplates(pathTemplates)
 	pathRegexes := make([]*regexp.Regexp, len(pathTemplates))
 	for i, tmpl := range pathTemplates {
 		pathRegexes[i] = pathToRegex(tmpl)
@@ -178,6 +179,7 @@ func Run(opts Options) error {
 	doc.XPathTemplates = append(doc.XPathTemplates, suggestions...)
 	doc.XPathTemplates = schema.FilterXPathTemplates(doc.XPathTemplates, doc.Paths)
 	doc.XPathTemplates = schema.DedupeStrings(doc.XPathTemplates)
+	schema.SortPathTemplates(doc.XPathTemplates)
 
 	return doc.Save(opts.Output)
 }

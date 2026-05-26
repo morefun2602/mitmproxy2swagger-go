@@ -14,11 +14,11 @@ Issue 托管在 GitHub（`morefun2602/mitmproxy2swagger-go`）。详见 `docs/ag
 
 ## 代码布局
 
-- **`pkg/`** — 可被外部 Go 模块 import 的公共 API：`pass`、`enrich`、`capture`（含 `har`/`flow`/`open`）、`schema`、`swaggerutil`。
+- **`pkg/`** — 可被外部 Go 模块 import 的公共 API：`pass`、`enrich`、`curate`、`auth`、`capture`（含 `har`/`flow`/`open`）、`schema`、`swaggerutil`。
 - **`internal/golden`** — 仅本模块：golden 生成/对比、`generategolden` 与 `stripignore` 工具。
-- **`cmd/mitmproxy2swagger`** — CLI，import `pkg/pass` 与 `pkg/enrich`。
+- **`cmd/mitmproxy2swagger`** — CLI，import `pkg/pass`、`pkg/curate` 与 `pkg/enrich`。
 
-详见 [ADR-0006](docs/adr/0006-public-api-in-pkg.md)。
+详见 [ADR-0006](docs/adr/0006-public-api-in-pkg.md)、[ADR-0007](docs/adr/0007-curate-curation-assist.md)、[ADR-0008](docs/adr/0008-auth-observation-two-phase.md)。
 
 ## 开发环境
 

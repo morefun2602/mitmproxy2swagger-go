@@ -29,6 +29,8 @@ go build -o mitmproxy2swagger ./cmd/mitmproxy2swagger
 子命令：
 
 - `pass` — 对抓包运行 Pass，更新 OpenAPI Schema
+- `curate` — 聚类 `x-path-templates`（`--auto`）、LLM 合并建议（`--llm-suggest`）、应用建议（`--apply-suggestions`）；见 [ADR-0007](docs/adr/0007-curate-curation-assist.md)
+- `auth observe` — 扫描抓包中的鉴权相关 header，写出 `auth-observations.yaml`；见 [ADR-0008](docs/adr/0008-auth-observation-two-phase.md)
 - `enrich` — LLM 语义增强（见 [ADR-0003](docs/adr/0003-llm-enrichment-subcommand.md)）
 - `version` — 打印构建版本
 - `completion` — 生成 shell 补全脚本
@@ -117,6 +119,8 @@ err := pass.Run(pass.Options{
 | 包 | 主要导出 |
 |----|----------|
 | `pkg/pass` | `Run`、`Options` |
+| `pkg/curate` | `Run`、`Options`、`AutoTemplates`、`LoadSuggestionsFile` |
+| `pkg/auth` | `RunObserve`、`Options`、`LoadObservationsFile` |
 | `pkg/enrich` | `Run`、`Options`、`EnrichmentResult`、`RedactMode` |
 | `pkg/capture` | `Reader`、`CapturedRequest`、`ProgressFunc` |
 | `pkg/capture/open` | `OpenReader` |

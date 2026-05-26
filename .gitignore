@@ -2,5 +2,9 @@
 .env
 *.tmp.yaml
 build/
-testdata/xiezuo.har
+# 私有 capture：放到 testdata/local/ 或 testdata/ 根目录（勿提交）
+testdata/local/
+testdata/private/
+/testdata/*.har
 /mitmproxy2swagger
+testdata/captures/im.har

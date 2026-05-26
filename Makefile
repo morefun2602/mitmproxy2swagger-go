@@ -11,90 +11,132 @@ BASE_URL ?= $(OPENAI_BASE_URL)
 
 CLI := $(GO) run ./cmd/mitmproxy2swagger
 
-# testdata/xiezuo.har 在 .gitignore 中，需自行放置
-XIEZUO_HAR := testdata/xiezuo.har
-# 匹配 woa.wps.cn 下 /api/v1、v2、v3、v4；若只要 v2 可改为 https://woa.wps.cn/api/v2
-XIEZUO_PREFIX := https://woa.wps.cn/api
-XIEZUO_DIR := build/xiezuo
-XIEZUO_SCHEMA := $(XIEZUO_DIR)/schema.yaml
-XIEZUO_ENRICHED := $(XIEZUO_DIR)/enriched.yaml
-XIEZUO_PROMPTS := $(XIEZUO_DIR)/prompts
-XIEZUO_REDOC := $(XIEZUO_DIR)/redoc.html
+# 示例工作流：使用仓库内公开 HAR；私有 capture 请放到 testdata/local/（已 gitignore）
+EXAMPLE_HAR := testdata/captures/im.har
+EXAMPLE_PREFIX := https://woa.wps.cn/api
+EXAMPLE_DIR := build/example
+EXAMPLE_SCHEMA := $(EXAMPLE_DIR)/schema.yaml
+EXAMPLE_ENRICHED := $(EXAMPLE_DIR)/enriched.yaml
+EXAMPLE_PROMPTS := $(EXAMPLE_DIR)/prompts
+EXAMPLE_REDOC := $(EXAMPLE_DIR)/redoc.html
+EXAMPLE_SUGGESTIONS := $(EXAMPLE_DIR)/template-suggestions.yaml
+EXAMPLE_AUTH_OBS := $(EXAMPLE_DIR)/auth-observations.yaml
 SAMPLES := 5
+CONCURRENCY ?= 10
 
 REDOCLY ?= redocly
 
-.PHONY: help xiezuo-pass1 xiezuo-pass2 xiezuo-curate-strip xiezuo-pass \
-	xiezuo-enrich-prompts xiezuo-enrich xiezuo-redoc xiezuo-clean
+.PHONY: help example-pass1 example-curate-auto example-auth-observe example-auth-apply \
+	example-curate-suggest-prompts example-curate-suggest example-curate-apply \
+	example-pass2 example-enrich-prompts example-enrich example-redoc example-clean
 
 help:
-	@echo "xiezuo 工作流（依赖 $(XIEZUO_HAR)）："
-	@echo "  1. make xiezuo-pass1          第一遍 Pass → $(XIEZUO_SCHEMA)"
-	@echo "  2. 编辑 schema，去掉要生成的 path 上的 ignore:"
-	@echo "  3. make xiezuo-pass2          第二遍 Pass，写入 paths"
-	@echo "  4. make xiezuo-enrich-prompts 导出 prompt（不调 LLM）"
-	@echo "     make xiezuo-enrich          真实 LLM enrich（需 OPENAI_API_KEY）"
-	@echo "  5. make xiezuo-redoc           Redocly → $(XIEZUO_REDOC)"
+	@echo "示例工作流（依赖 $(EXAMPLE_HAR)）："
+	@echo "  1.  make example-pass1                 第一遍 Pass → $(EXAMPLE_SCHEMA)"
+	@echo "  2.  make example-curate-auto           聚类 x-path-templates"
+	@echo "  3.  make example-auth-observe          鉴权观测 → $(EXAMPLE_AUTH_OBS)"
+	@echo "  4.  编辑 $(EXAMPLE_AUTH_OBS)，填 verified / combination"
+	@echo "  5.  make example-auth-apply            写入 securitySchemes"
+	@echo "  6.  make example-curate-suggest-prompts  导出 curate LLM prompt（不调 API，可选）"
+	@echo "  7.  make example-curate-suggest        LLM 合并建议 → $(EXAMPLE_SUGGESTIONS)（可选，需 OPENAI_API_KEY）"
+	@echo "  8.  make example-curate-apply          应用 template-suggestions（可选）"
+	@echo "  9.  编辑 $(EXAMPLE_SCHEMA)，去掉要生成的 path 上的 ignore:"
+	@echo "  10. make example-pass2                 第二遍 Pass，写入 paths"
+	@echo "  11. make example-enrich-prompts        导出 enrich prompt（不调 LLM）"
+	@echo "  12. make example-enrich                LLM enrich → $(EXAMPLE_ENRICHED)（需 OPENAI_API_KEY）"
+	@echo "  13. make example-redoc                 Redocly → $(EXAMPLE_REDOC)"
 	@echo ""
-	@echo "可选:"
-	@echo "  make xiezuo-curate-strip      批量去掉全部 ignore:（显式 opt-in，非默认）"
-	@echo "  make xiezuo-pass              同 xiezuo-pass1"
-	@echo "  make xiezuo-clean             删除 $(XIEZUO_DIR)"
-	@echo "  变量: MODEL=...  BASE_URL=...  SAMPLES=1（或写入 .env，存在时自动加载）"
-	@echo "        REDOCLY=redocly         （未安装时用: npx --yes @redocly/cli）"
+	@echo "其它:"
+	@echo "  make example-clean                     删除 $(EXAMPLE_DIR)"
+	@echo "  变量: MODEL=...  BASE_URL=...  SAMPLES=1  CONCURRENCY=10（或写入 .env，存在时自动加载）"
+	@echo "        REDOCLY=redocly                  （未安装时用: npx --yes @redocly/cli）"
 
-# 兼容旧 target 名
-xiezuo-pass: xiezuo-pass1
 
-xiezuo-pass1: $(XIEZUO_SCHEMA)
+example-pass1: $(EXAMPLE_SCHEMA)
 
-$(XIEZUO_SCHEMA): $(XIEZUO_HAR)
-	@test -f $(XIEZUO_HAR) || (echo "missing $(XIEZUO_HAR)" && exit 1)
-	@mkdir -p $(XIEZUO_DIR)
+$(EXAMPLE_SCHEMA): $(EXAMPLE_HAR)
+	@test -f $(EXAMPLE_HAR) || (echo "missing $(EXAMPLE_HAR)" && exit 1)
+	@mkdir -p $(EXAMPLE_DIR)
 	@echo "Pass 1: discover path templates (x-path-templates with ignore:)"
-	$(CLI) pass -i $(XIEZUO_HAR) -o $(XIEZUO_SCHEMA) -p $(XIEZUO_PREFIX) -f har
+	$(CLI) pass -i $(EXAMPLE_HAR) -o $(EXAMPLE_SCHEMA) -p $(EXAMPLE_PREFIX) -f har
 
-xiezuo-curate-strip:
-	@test -f $(XIEZUO_SCHEMA) || (echo "run make xiezuo-pass1 first" && exit 1)
-	@echo "Strip all ignore: prefixes (opt-in; prefer manual curation)"
-	$(GO) run ./cmd/stripignore -schema $(XIEZUO_SCHEMA)
+example-curate-auto:
+	@test -f $(EXAMPLE_SCHEMA) || (echo "run make example-pass1 first" && exit 1)
+	@echo "Curate --auto: cluster x-path-templates"
+	$(CLI) curate --auto -o $(EXAMPLE_SCHEMA)
 
-xiezuo-pass2:
-	@test -f $(XIEZUO_SCHEMA) || (echo "run make xiezuo-pass1 first" && exit 1)
-	@echo "Pass 2: materialize curated paths"
-	$(CLI) pass -i $(XIEZUO_HAR) -o $(XIEZUO_SCHEMA) -p $(XIEZUO_PREFIX) -f har
+example-auth-observe:
+	@test -f $(EXAMPLE_HAR) || (echo "missing $(EXAMPLE_HAR)" && exit 1)
+	@mkdir -p $(EXAMPLE_DIR)
+	@echo "Auth observe: credential statistics"
+	$(CLI) auth observe -i $(EXAMPLE_HAR) -p $(EXAMPLE_PREFIX) -f har -o $(EXAMPLE_AUTH_OBS)
 
-xiezuo-enrich-prompts:
-	@test -f $(XIEZUO_SCHEMA) || (echo "run make xiezuo-pass1 first" && exit 1)
-	@mkdir -p $(XIEZUO_PROMPTS)
-	$(CLI) enrich \
-		-i $(XIEZUO_HAR) \
-		-s $(XIEZUO_SCHEMA) \
-		-o $(XIEZUO_ENRICHED) \
-		-p $(XIEZUO_PREFIX) \
-		-f har \
-		--samples $(or $(SAMPLES),1) \
-		--emit-prompts $(XIEZUO_PROMPTS)
+example-auth-apply:
+	@test -f $(EXAMPLE_SCHEMA) || (echo "run make example-pass1 first" && exit 1)
+	@test -f $(EXAMPLE_AUTH_OBS) || (echo "run make example-auth-observe first" && exit 1)
+	@echo "Auth apply: securitySchemes + security from $(EXAMPLE_AUTH_OBS)"
+	$(CLI) auth apply -s $(EXAMPLE_SCHEMA) --observations $(EXAMPLE_AUTH_OBS)
 
-xiezuo-enrich:
-	@test -f $(XIEZUO_SCHEMA) || (echo "run make xiezuo-pass1 first" && exit 1)
+example-curate-suggest-prompts:
+	@test -f $(EXAMPLE_SCHEMA) || (echo "run make example-pass1 first" && exit 1)
+	@test -f $(EXAMPLE_HAR) || (echo "missing $(EXAMPLE_HAR)" && exit 1)
+	@mkdir -p $(EXAMPLE_DIR)/curate-prompts
+	$(CLI) curate --llm-suggest -o $(EXAMPLE_SCHEMA) -i $(EXAMPLE_HAR) -p $(EXAMPLE_PREFIX) -f har \
+		--emit-prompts $(EXAMPLE_DIR)/curate-prompts
+
+example-curate-suggest:
+	@test -f $(EXAMPLE_SCHEMA) || (echo "run make example-pass1 first" && exit 1)
+	@test -f $(EXAMPLE_HAR) || (echo "missing $(EXAMPLE_HAR)" && exit 1)
 	@test -n "$$OPENAI_API_KEY" || (echo "set OPENAI_API_KEY" && exit 1)
-	$(CLI) enrich \
-		-i $(XIEZUO_HAR) \
-		-s $(XIEZUO_SCHEMA) \
-		-o $(XIEZUO_ENRICHED) \
-		-p $(XIEZUO_PREFIX) \
-		-f har \
-		--samples $(or $(SAMPLES),1) \
-		--force \
+	@echo "Curate --llm-suggest: template merge suggestions"
+	$(CLI) curate --llm-suggest -o $(EXAMPLE_SCHEMA) -i $(EXAMPLE_HAR) -p $(EXAMPLE_PREFIX) -f har \
+		--suggestions-out $(EXAMPLE_SUGGESTIONS) \
 		$(if $(MODEL),--model $(MODEL),) \
 		$(if $(BASE_URL),--base-url $(BASE_URL),)
 
-xiezuo-redoc: $(XIEZUO_REDOC)
+example-curate-apply:
+	@test -f $(EXAMPLE_SCHEMA) || (echo "run make example-pass1 first" && exit 1)
+	@test -f $(EXAMPLE_SUGGESTIONS) || (echo "missing $(EXAMPLE_SUGGESTIONS); run make example-curate-suggest" && exit 1)
+	@echo "Curate --apply-suggestions"
+	$(CLI) curate -o $(EXAMPLE_SCHEMA) --apply-suggestions $(EXAMPLE_SUGGESTIONS)
 
-$(XIEZUO_REDOC): $(XIEZUO_ENRICHED)
-	@test -f $(XIEZUO_ENRICHED) || (echo "missing $(XIEZUO_ENRICHED); run make xiezuo-enrich first" && exit 1)
-	$(REDOCLY) build-docs $(XIEZUO_ENRICHED) -o $(XIEZUO_REDOC)
+example-pass2:
+	@test -f $(EXAMPLE_SCHEMA) || (echo "run make example-pass1 first" && exit 1)
+	@echo "Pass 2: materialize curated paths"
+	$(CLI) pass -i $(EXAMPLE_HAR) -o $(EXAMPLE_SCHEMA) -p $(EXAMPLE_PREFIX) -f har
 
-xiezuo-clean:
-	rm -rf $(XIEZUO_DIR)
+example-enrich-prompts:
+	@test -f $(EXAMPLE_SCHEMA) || (echo "run make example-pass1 first" && exit 1)
+	@mkdir -p $(EXAMPLE_PROMPTS)
+	$(CLI) enrich \
+		-i $(EXAMPLE_HAR) \
+		-s $(EXAMPLE_SCHEMA) \
+		-o $(EXAMPLE_ENRICHED) \
+		-p $(EXAMPLE_PREFIX) \
+		-f har \
+		--samples $(or $(SAMPLES),1) \
+		--emit-prompts $(EXAMPLE_PROMPTS)
+
+example-enrich:
+	@test -f $(EXAMPLE_SCHEMA) || (echo "run make example-pass1 first" && exit 1)
+	@test -n "$$OPENAI_API_KEY" || (echo "set OPENAI_API_KEY" && exit 1)
+	$(CLI) enrich \
+		-i $(EXAMPLE_HAR) \
+		-s $(EXAMPLE_SCHEMA) \
+		-o $(EXAMPLE_ENRICHED) \
+		-p $(EXAMPLE_PREFIX) \
+		-f har \
+		--samples $(or $(SAMPLES),1) \
+		--force \
+		--concurrency $(or $(CONCURRENCY),10) \
+		$(if $(MODEL),--model $(MODEL),) \
+		$(if $(BASE_URL),--base-url $(BASE_URL),)
+
+example-redoc: $(EXAMPLE_REDOC)
+
+$(EXAMPLE_REDOC): $(EXAMPLE_ENRICHED)
+	@test -f $(EXAMPLE_ENRICHED) || (echo "missing $(EXAMPLE_ENRICHED); run make example-enrich first" && exit 1)
+	$(REDOCLY) build-docs $(EXAMPLE_ENRICHED) -o $(EXAMPLE_REDOC)
+
+example-clean:
+	rm -rf $(EXAMPLE_DIR)

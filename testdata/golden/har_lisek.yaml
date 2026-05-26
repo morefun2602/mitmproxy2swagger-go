@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: testdata/captures/sklep.lisek.app.har Mitmproxy2Swagger
+  title: /Users/bytedance/code/mitmproxy2swagger-go/testdata/captures/sklep.lisek.app.har Mitmproxy2Swagger
   version: 1.0.0
 servers:
   - description: The default server
@@ -620,14 +620,8 @@ paths:
           content: {}
           description: OK
       summary: OPTIONS deliveryfees
-  /api/inventory/promo/{id}/full:
+  /api/inventory/promo/5/full:
     get:
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           content:
@@ -743,27 +737,15 @@ paths:
                     type: array
                 type: object
           description: OK
-      summary: GET full by id
+      summary: GET full
     options:
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           content: {}
           description: OK
-      summary: OPTIONS full by id
-  /api/sliders/{id}:
+      summary: OPTIONS full
+  /api/sliders/5:
     get:
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           content:
@@ -808,32 +790,15 @@ paths:
                     type: array
                 type: object
           description: OK
-      summary: GET sliders by id
+      summary: GET 5
     options:
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           content: {}
           description: OK
-      summary: OPTIONS sliders by id
-  /api/inventory/{id}/categories/{id1}/products:
+      summary: OPTIONS 5
+  /api/inventory/5/categories/31/products:
     get:
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-        - in: path
-          name: id1
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           content:
@@ -964,32 +929,154 @@ paths:
                     type: object
                 type: object
           description: OK
-      summary: GET products by id
+      summary: GET products
     options:
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-        - in: path
-          name: id1
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           content: {}
           description: OK
-      summary: OPTIONS products by id
-  /api/inventory/{id}/stocks:
+      summary: OPTIONS products
+  /api/inventory/5/categories/73/products:
     get:
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  errorTexts:
+                    type: string
+                  errors:
+                    items: {}
+                    type: array
+                  success:
+                    type: boolean
+                  value:
+                    properties:
+                      alcohol:
+                        type: boolean
+                      backgroundColor:
+                        type: string
+                      categorySeo:
+                        nullable: true
+                        type: object
+                      iconPath:
+                        type: string
+                      id:
+                        type: number
+                      imagePath:
+                        type: string
+                      key:
+                        type: string
+                      mobileCategoryView:
+                        nullable: true
+                        type: object
+                      mobileMainCategoryView:
+                        nullable: true
+                        type: object
+                      name:
+                        type: string
+                      number:
+                        type: number
+                      order:
+                        type: number
+                      parentId:
+                        nullable: true
+                        type: object
+                      products:
+                        items:
+                          properties:
+                            bundleId:
+                              nullable: true
+                              type: object
+                            categoryId:
+                              type: number
+                            ean:
+                              type: string
+                            headline:
+                              type: string
+                            id:
+                              type: number
+                            imagePath:
+                              type: string
+                            isAlcohol:
+                              type: boolean
+                            isBundle:
+                              type: boolean
+                            isCold:
+                              type: boolean
+                            isHit:
+                              type: boolean
+                            isNew:
+                              type: boolean
+                            isPromo:
+                              type: boolean
+                            isSubCategorySorted:
+                              type: boolean
+                            maxQuantity:
+                              type: number
+                            packAmount:
+                              type: number
+                            packInfo:
+                              type: string
+                            packUnit:
+                              type: string
+                            price:
+                              type: number
+                            priceBeforePromo:
+                              nullable: true
+                              type: object
+                            pricePerUnitText:
+                              nullable: true
+                              type: object
+                            promoText:
+                              type: string
+                            quantity:
+                              type: number
+                            showOutOfStock:
+                              type: boolean
+                            sortOrder:
+                              type: number
+                            stockItemId:
+                              type: number
+                            subCategoryId:
+                              type: number
+                            subCategoryName:
+                              type: string
+                            subTitle:
+                              type: string
+                            title:
+                              type: string
+                            vat:
+                              type: number
+                            verifyAge:
+                              type: boolean
+                            weight:
+                              type: string
+                          type: object
+                        type: array
+                      stockItemId:
+                        type: number
+                      subCategories:
+                        items: {}
+                        type: array
+                      verifyAge:
+                        type: boolean
+                      webCategoryMainView:
+                        nullable: true
+                        type: object
+                    type: object
+                type: object
+          description: OK
+      summary: GET products
+    options:
+      responses:
+        "200":
+          content: {}
+          description: OK
+      summary: OPTIONS products
+  /api/inventory/5/stocks:
+    get:
       responses:
         "200":
           content:
@@ -1014,22 +1101,15 @@ paths:
                     type: array
                 type: object
           description: OK
-      summary: GET stocks by id
+      summary: GET stocks
     options:
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           content: {}
           description: OK
-      summary: OPTIONS stocks by id
+      summary: OPTIONS stocks
 x-path-templates:
-  - /api/inventory/5/categories/31/products
-  - /api/inventory/5/categories/73/products
-  - /api/inventory/5/stocks
-  - /api/inventory/promo/5/full
-  - /api/sliders/5
+  - /api/inventory/promo/{id}/full
+  - /api/inventory/{id}/stocks
+  - /api/sliders/{id}
+  - /api/inventory/{id}/categories/{id1}/products
