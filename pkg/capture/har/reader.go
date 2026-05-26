@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/capture"
 )
 
 type headerKV struct {

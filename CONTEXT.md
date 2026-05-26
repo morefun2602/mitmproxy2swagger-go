@@ -1,16 +1,20 @@
 # mitmproxy2swagger-go
 
-将 Python 版 mitmproxy2swagger 忠实移植为 Go 实现的 CLI 工具：从 HTTP 抓包文件反向生成 OpenAPI 3.0 规范。
+从 HTTP 抓包文件反向生成 OpenAPI 3.0 Schema 的 Go CLI；在 Python v0.14.0 行为对齐已完成的基础上，作为**独立产品**持续演进（如 LLM 语义增强）。
 
 ## 语言
 
-**忠实移植**：
-Go 版在 CLI 参数、两遍工作流、输出格式（含 `x-path-templates` 扩展）上与 Python 版行为等价；Go 实现是 drop-in 替代，而非重新设计的产品。
-_Avoid_: 重写、重构产品、兼容核心但随意演进
+**产品演进**：
+Python v0.14.0 移植已完成；后续不再以与 Python 版逐字段对齐为首要目标。Pass 流水线与 Golden Schema 仍用于回归，新产品能力（如 Enrichment）在 Go 版独立设计。
+_Avoid_: 仍以「忠实移植」作为新功能决策的首要约束
 
-**移植基准**：
-行为等价的验收对照为 `alufers/mitmproxy2swagger` **v0.14.0**；Go 版先与该 tag 对齐，是否跟进上游新版本另行决策。
-_Avoid_: 跟踪 main、以未发布 fork 为准（除非显式变更此决策）
+**移植基准（历史）**：
+Pass 行为曾以 `alufers/mitmproxy2swagger` **v0.14.0** 为验收对照；该阶段已结束。
+_Avoid_: 将 v0.14.0 作为 Enrichment 等新能力的验收标准
+
+**忠实移植（历史阶段）**：
+Go 版在 CLI Pass 参数、两遍工作流、输出格式（含 `x-path-templates`）上曾与 Python 版行为等价。
+_Avoid_: 用此描述当前产品目标（已 superseded by **产品演进**）
 
 ### 输入
 
@@ -87,8 +91,24 @@ _Avoid_: base URL、server URL（作过滤条件时）
 _Avoid_: 用 Swagger 指代 OpenAPI 3.0 Schema
 
 **CLI Contract**（CLI 契约）：
-用户可见的命令行接口：二进制名 `mitmproxy2swagger`，参数名、短选项与默认值与 Python v0.14.0 一致。
-_Avoid_: m2s、mitmproxy2swagger-go（作用户-facing 命令名时）
+用户可见的命令行接口：二进制名 `mitmproxy2swagger`。Pass 通过 `pass` 子命令调用；Pass 参数名、短选项与 Python v0.14.0 Pass 一致。Go 扩展能力通过其他子命令暴露（如 `enrich`、`version`、`completion`）。无子命令时 CLI 报错并提示可用子命令。
+_Avoid_: m2s、mitmproxy2swagger-go（作用户-facing 命令名时）；将 enrich 子命令参数与 Pass 参数混为一谈
+
+**Enrichment**（语义增强）：
+在 Pass 产出 **Schema** 之后，结合 **HAR archive** 与 LLM 为 **Endpoint** 补全语义字段（summary、description、tags、参数说明等）的后处理步骤；通过 `mitmproxy2swagger enrich` 子命令触发，非 Pass 的一部分。
+_Avoid_: 增强、AI 文档（作 Enrichment 的同义词时）；在 First Pass / Second Pass 内做 LLM 调用
+
+**Enriched Schema**：
+经 **Enrichment** 写回后的 OpenAPI 3.0 Schema；主产物仍为 YAML，可交给 Redoc 等工具渲染。
+_Avoid_: AI spec、智能文档（作 Enriched Schema 的同义词时）
+
+**Enrichment Merge**（增强合并）：
+Enrichment 写入 Enriched Schema 的策略：默认与 **Schema Merge** 相同（set-if-not-exists）；`--force` 时可覆盖已有语义字段。
+_Avoid_: 全量重写、覆盖更新（作 Enrichment Merge 的同义词时）
+
+**Redaction**（脱敏）：
+Enrichment 送 LLM 前对 **Captured Request** 中敏感 header/body 字段的替换；默认 strict，可通过 `--redact=off` 关闭。
+_Avoid_: 匿名化、清洗（作 Redaction 的同义词时）
 
 **Prefix Match**（前缀匹配）：
 判断 Captured Request 是否属于当前 API Prefix 的过滤步骤。Flow dump 在 URL 直接不匹配时，会用 Host 相关头替换 netloc 后重试；HAR archive 仅做 URL 的 strict prefix 匹配。
@@ -129,8 +149,12 @@ _Avoid_: 动态键、通配键
 ### 验收
 
 **Golden Schema**：
-Python v0.14.0 在固定 Capture 与 CLI 参数下生成的基准 Schema；Go 版在相同输入下输出须与之间语义等价，用于回归验证行为等价。
-_Avoid_: 参考输出、预期 YAML（作 Golden Schema 的同义词时）
+Pass 在固定 Capture 与 CLI 参数下生成的基准 Schema；用于 Pass 回归，验证与 v0.14.0 行为仍一致。**Enrichment** 不参与 Golden Schema 对比。
+_Avoid_: 参考输出、预期 YAML（作 Golden Schema 的同义词时）；用 Golden Schema 验收 Enriched Schema
+
+**Enrichment Acceptance**（增强验收）：
+Enrichment 的自动化测试策略：CI 用 mock LLM 固定响应验证 pipeline（Redaction、Enrichment Merge、写回）；可选结构断言；真实 LLM 质量靠 `--emit-prompts` 等人工 spot-check，不做 byte-level golden。
+_Avoid_: Golden Schema（作 Enrichment 验收的同义词时）
 
 ## 示例对话
 
@@ -141,5 +165,8 @@ _Avoid_: 参考输出、预期 YAML（作 Golden Schema 的同义词时）
 > **领域专家**：先对照 v0.14.0。Flow dump 的 Prefix Match 会用 Host 头替换 netloc；HAR 只做 strict URL 匹配。这是格式差异，不是回归。用 Golden Schema 对比 Python 输出确认。  
 >  
 > **开发者**：Second Pass 后想更新某个 Endpoint 的 response schema，再跑一遍行吗？  
-> **领域专家**：Schema Merge 是只增不改。已有字段不会被覆盖；要更新就手动删该 Endpoint 再跑 Pass。
+> **领域专家**：Schema Merge 是只增不改。已有字段不会被覆盖；要更新就手动删该 Endpoint 再跑 Pass。  
+>  
+> **开发者**：Pass 生成的 summary 是 `GET infos` 这种机械名字，能自动改成可读描述吗？  
+> **领域专家**：Pass 不负责语义命名。Second Pass 与 Curation 完成后，跑 `mitmproxy2swagger pass` 产出 **Schema**，再跑 `mitmproxy2swagger enrich` 做 **Enrichment**，得到 **Enriched Schema**；默认 **Enrichment Merge** 不覆盖你手写的 description，需要时用 `--force`。
 

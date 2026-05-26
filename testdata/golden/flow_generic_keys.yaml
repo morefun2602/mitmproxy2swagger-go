@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: /Users/bytedance/code/mitmproxy2swagger-go/testdata/captures/generic_keys_flows
+  title: testdata/captures/generic_keys_flows
     Mitmproxy2Swagger
   version: 1.0.0
 servers:

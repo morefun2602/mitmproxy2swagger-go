@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	captureopen "github.com/morefun2602/mitmproxy2swagger-go/internal/capture/open"
+	captureopen "github.com/morefun2602/mitmproxy2swagger-go/pkg/capture/open"
 )
 
 func repoRoot(t *testing.T) string {

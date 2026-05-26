@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/pass"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/pass"
 )
 
 // RunCase executes the two-pass workflow for a case and returns the resulting Schema YAML.

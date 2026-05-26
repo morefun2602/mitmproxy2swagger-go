@@ -3,7 +3,7 @@ package swaggerutil_test
 import (
 	"testing"
 
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/swaggerutil"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/swaggerutil"
 )
 
 func TestPathTemplateToEndpointName(t *testing.T) {

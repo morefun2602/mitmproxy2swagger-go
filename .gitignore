@@ -1,2 +1,6 @@
 .mypy_cache/
+.env
 *.tmp.yaml
+build/
+testdata/xiezuo.har
+/mitmproxy2swagger

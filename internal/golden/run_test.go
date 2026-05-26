@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/morefun2602/mitmproxy2swagger-go/internal/golden"
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/pass"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/pass"
 )
 
 func TestRunCasePreservesOpenAPI(t *testing.T) {

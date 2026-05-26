@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: /Users/bytedance/code/mitmproxy2swagger-go/testdata/captures/sklep.lisek.app.har Mitmproxy2Swagger
+  title: testdata/captures/sklep.lisek.app.har Mitmproxy2Swagger
   version: 1.0.0
 servers:
   - description: The default server

@@ -26,7 +26,14 @@ go build -o mitmproxy2swagger ./cmd/mitmproxy2swagger
 
 ## Usage
 
-The tool runs in two passes over the same capture file and schema:
+Subcommands:
+
+- `pass` — run a Pass over a capture file and update the OpenAPI schema
+- `enrich` — LLM semantic enrichment (see [ADR-0003](docs/adr/0003-llm-enrichment-subcommand.md))
+- `version` — print build version
+- `completion` — generate shell completion scripts
+
+The Pass workflow runs twice over the same capture file and schema:
 
 1. **First pass** — discovers URL paths and writes candidate path templates to `x-path-templates` (prefixed with `ignore:` by default).
 2. **Curation** — edit the schema: remove `ignore:` from the paths you want, and adjust placeholders if needed.
@@ -40,7 +47,7 @@ Existing schema content is merged with a set-if-not-exists policy: new keys are 
 2. Run the first pass:
 
    ```bash
-   mitmproxy2swagger \
+   mitmproxy2swagger pass \
      -i capture.har \
      -o schema.yaml \
      -p https://api.example.com/v1
@@ -61,7 +68,7 @@ Existing schema content is merged with a set-if-not-exists policy: new keys are 
 4. Run the second pass with the same flags:
 
    ```bash
-   mitmproxy2swagger \
+   mitmproxy2swagger pass \
      -i capture.har \
      -o schema.yaml \
      -p https://api.example.com/v1
@@ -71,7 +78,7 @@ Existing schema content is merged with a set-if-not-exists policy: new keys are 
 
 HAR files are auto-detected. You can force the format with `-f har`.
 
-## CLI flags
+## CLI flags (`pass`)
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
@@ -88,6 +95,35 @@ HAR files are auto-detected. You can force the format with `-f har`.
 
 - **Flow dump** (`--format flow`, mitmproxy export) is **not implemented yet**. Use HAR captures for now.
 - For HAR input, API prefix matching is strict URL prefix only (no Host-header fallback).
+
+## As a library
+
+Public packages live under `pkg/` and can be imported from other Go modules:
+
+```go
+import (
+    "github.com/morefun2602/mitmproxy2swagger-go/pkg/pass"
+    "github.com/morefun2602/mitmproxy2swagger-go/pkg/enrich"
+)
+
+err := pass.Run(pass.Options{
+    Input:     "capture.har",
+    Output:    "schema.yaml",
+    APIPrefix: "https://api.example.com/v1",
+    Format:    "har",
+})
+```
+
+| Package | Main exports |
+|---------|----------------|
+| `pkg/pass` | `Run`, `Options` |
+| `pkg/enrich` | `Run`, `Options`, `EnrichmentResult`, `RedactMode` |
+| `pkg/capture` | `Reader`, `CapturedRequest`, `ProgressFunc` |
+| `pkg/capture/open` | `OpenReader` |
+| `pkg/schema` | `Document`, `Load`, `Save` |
+| `pkg/swaggerutil` | path/parameter inference helpers |
+
+`internal/golden` and `cmd/*` are module-private (golden tests and binaries only). See [ADR-0006](docs/adr/0006-public-api-in-pkg.md).
 
 ## Development
 

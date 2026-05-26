@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture"
-	captureopen "github.com/morefun2602/mitmproxy2swagger-go/internal/capture/open"
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/schema"
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/swaggerutil"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/capture"
+	captureopen "github.com/morefun2602/mitmproxy2swagger-go/pkg/capture/open"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/schema"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/swaggerutil"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -190,7 +191,15 @@ func loadDocument(outputPath, inputPath string) (*schema.Document, error) {
 		return nil, err
 	}
 	fmt.Println("No existing swagger file found. Creating new one.")
-	return schema.New(inputPath), nil
+	return schema.New(captureTitle(inputPath)), nil
+}
+
+func captureTitle(inputPath string) string {
+	clean := filepath.Clean(inputPath)
+	if rel, err := filepath.Rel(".", clean); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		clean = rel
+	}
+	return filepath.ToSlash(clean)
 }
 
 func buildSuggestedTemplates(paths []string, paramRegex *regexp.Regexp, suppressParams bool) []string {

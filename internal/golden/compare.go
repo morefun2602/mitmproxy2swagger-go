@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/schema"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/schema"
 )
 
 // CompareYAML reports whether two Schema YAML documents are semantically equal.

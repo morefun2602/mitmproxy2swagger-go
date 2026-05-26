@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture"
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture/flow"
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture/har"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/capture"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/capture/flow"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/capture/har"
 )
 
 // OpenReader selects a Capture Reader from format flags and heuristics.

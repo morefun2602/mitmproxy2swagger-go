@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture"
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture/har"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/capture"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/capture/har"
 )
 
 func testdataPath(t *testing.T, parts ...string) string {

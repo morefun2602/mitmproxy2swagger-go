@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/schema"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/schema"
 )
 
 func TestMarshalUsesTwoSpaceIndent(t *testing.T) {

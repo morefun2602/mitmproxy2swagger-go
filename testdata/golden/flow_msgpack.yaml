@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: /Users/bytedance/code/mitmproxy2swagger-go/testdata/captures/msgpack_flows
+  title: testdata/captures/msgpack_flows
     Mitmproxy2Swagger
   version: 1.0.0
 servers:

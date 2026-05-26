@@ -3,8 +3,8 @@ package har_test
 import (
 	"testing"
 
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture/flow"
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/capture/har"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/capture/flow"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/capture/har"
 )
 
 func TestArchiveHeuristicWinsForHARCapture(t *testing.T) {

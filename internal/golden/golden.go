@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/pass"
-	"github.com/morefun2602/mitmproxy2swagger-go/internal/schema"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/pass"
+	"github.com/morefun2602/mitmproxy2swagger-go/pkg/schema"
 	"gopkg.in/yaml.v3"
 )
 

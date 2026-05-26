@@ -26,6 +26,13 @@ go build -o mitmproxy2swagger ./cmd/mitmproxy2swagger
 
 ## 用法
 
+子命令：
+
+- `pass` — 对抓包运行 Pass，更新 OpenAPI Schema
+- `enrich` — LLM 语义增强（见 [ADR-0003](docs/adr/0003-llm-enrichment-subcommand.md)）
+- `version` — 打印构建版本
+- `completion` — 生成 shell 补全脚本
+
 工具对同一份抓包文件和 Schema 文件执行两遍：
 
 1. **第一遍** — 发现 URL 路径，将候选路径模板写入 `x-path-templates`（默认带 `ignore:` 前缀）。
@@ -40,7 +47,7 @@ go build -o mitmproxy2swagger ./cmd/mitmproxy2swagger
 2. 运行第一遍：
 
    ```bash
-   mitmproxy2swagger \
+   mitmproxy2swagger pass \
      -i capture.har \
      -o schema.yaml \
      -p https://api.example.com/v1
@@ -61,7 +68,7 @@ go build -o mitmproxy2swagger ./cmd/mitmproxy2swagger
 4. 使用相同参数运行第二遍：
 
    ```bash
-   mitmproxy2swagger \
+   mitmproxy2swagger pass \
      -i capture.har \
      -o schema.yaml \
      -p https://api.example.com/v1
@@ -71,7 +78,7 @@ go build -o mitmproxy2swagger ./cmd/mitmproxy2swagger
 
 HAR 文件会自动检测格式。可用 `-f har` 强制指定。
 
-## CLI 参数
+## CLI 参数（`pass`）
 
 | 参数 | 短选项 | 默认值 | 说明 |
 |------|--------|--------|------|
@@ -88,6 +95,35 @@ HAR 文件会自动检测格式。可用 `-f har` 强制指定。
 
 - **Flow dump**（`--format flow`，mitmproxy 导出）**尚未实现**。请暂时使用 HAR 抓包。
 - HAR 输入下，API 前缀匹配仅做 URL 严格前缀匹配（不会用 Host 头回退）。
+
+## 作为库使用
+
+可被其他 Go 模块引用的公共包位于 `pkg/`：
+
+```go
+import (
+    "github.com/morefun2602/mitmproxy2swagger-go/pkg/pass"
+    "github.com/morefun2602/mitmproxy2swagger-go/pkg/enrich"
+)
+
+err := pass.Run(pass.Options{
+    Input:     "capture.har",
+    Output:    "schema.yaml",
+    APIPrefix: "https://api.example.com/v1",
+    Format:    "har",
+})
+```
+
+| 包 | 主要导出 |
+|----|----------|
+| `pkg/pass` | `Run`、`Options` |
+| `pkg/enrich` | `Run`、`Options`、`EnrichmentResult`、`RedactMode` |
+| `pkg/capture` | `Reader`、`CapturedRequest`、`ProgressFunc` |
+| `pkg/capture/open` | `OpenReader` |
+| `pkg/schema` | `Document`、`Load`、`Save` |
+| `pkg/swaggerutil` | 路径/参数推断辅助函数 |
+
+`internal/golden` 与 `cmd/*` 仅本模块内使用（回归测试与二进制）。详见 [ADR-0006](docs/adr/0006-public-api-in-pkg.md)。
 
 ## 开发
 
