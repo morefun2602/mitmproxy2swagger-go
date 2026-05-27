@@ -21,6 +21,9 @@ EXAMPLE_PROMPTS := $(EXAMPLE_DIR)/prompts
 EXAMPLE_REDOC := $(EXAMPLE_DIR)/redoc.html
 EXAMPLE_SUGGESTIONS := $(EXAMPLE_DIR)/template-suggestions.yaml
 EXAMPLE_AUTH_OBS := $(EXAMPLE_DIR)/auth-observations.yaml
+EXAMPLE_TAGS := $(EXAMPLE_DIR)/tags.yaml
+# 增量更新：仅录缺失接口的 HAR（见 README.zh-CN.md「增量更新」）
+INCREMENTAL_HAR ?= testdata/local/incremental.har
 SAMPLES := 5
 CONCURRENCY ?= 10
 
@@ -28,7 +31,8 @@ REDOCLY ?= redocly
 
 .PHONY: help example-pass1 example-curate-auto example-auth-observe example-auth-apply \
 	example-curate-suggest-prompts example-curate-suggest example-curate-apply \
-	example-pass2 example-enrich-prompts example-enrich example-redoc example-clean
+	example-pass2 example-enrich-prompts example-enrich example-tags-apply example-redoc example-clean \
+	example-incremental-pass1 example-incremental-pass2 example-incremental-enrich
 
 help:
 	@echo "示例工作流（依赖 $(EXAMPLE_HAR)）："
@@ -44,11 +48,19 @@ help:
 	@echo "  10. make example-pass2                 第二遍 Pass，写入 paths"
 	@echo "  11. make example-enrich-prompts        导出 enrich prompt（不调 LLM）"
 	@echo "  12. make example-enrich                LLM enrich → $(EXAMPLE_ENRICHED)（需 OPENAI_API_KEY）"
-	@echo "  13. make example-redoc                 Redocly → $(EXAMPLE_REDOC)"
+	@echo "  13. make example-tags-apply            应用 $(EXAMPLE_TAGS) 分组 → $(EXAMPLE_ENRICHED)"
+	@echo "  14. make example-redoc                 Redocly → $(EXAMPLE_REDOC)"
+	@echo ""
+	@echo "增量更新（需已有 $(EXAMPLE_ENRICHED)，HAR=$(INCREMENTAL_HAR)）："
+	@echo "  make example-incremental-pass1         Pass 1 → $(EXAMPLE_ENRICHED)"
+	@echo "  编辑 $(EXAMPLE_ENRICHED)：仅对新增 x-path-templates 去掉 ignore:"
+	@echo "  make example-incremental-pass2         Pass 2"
+	@echo "  make example-incremental-enrich      enrich（无 --force）"
 	@echo ""
 	@echo "其它:"
 	@echo "  make example-clean                     删除 $(EXAMPLE_DIR)"
 	@echo "  变量: MODEL=...  BASE_URL=...  SAMPLES=1  CONCURRENCY=10（或写入 .env，存在时自动加载）"
+	@echo "        INCREMENTAL_HAR=...              增量 HAR 路径"
 	@echo "        REDOCLY=redocly                  （未安装时用: npx --yes @redocly/cli）"
 
 
@@ -132,11 +144,46 @@ example-enrich:
 		$(if $(MODEL),--model $(MODEL),) \
 		$(if $(BASE_URL),--base-url $(BASE_URL),)
 
+example-tags-apply:
+	@test -f $(EXAMPLE_ENRICHED) || (echo "missing $(EXAMPLE_ENRICHED); run make example-enrich first" && exit 1)
+	@test -f $(EXAMPLE_TAGS) || (echo "missing $(EXAMPLE_TAGS)" && exit 1)
+	@echo "Tags apply: $(EXAMPLE_TAGS) → $(EXAMPLE_ENRICHED)"
+	$(CLI) tags apply -s $(EXAMPLE_ENRICHED) -t $(EXAMPLE_TAGS)
+
 example-redoc: $(EXAMPLE_REDOC)
 
-$(EXAMPLE_REDOC): $(EXAMPLE_ENRICHED)
+$(EXAMPLE_REDOC): $(EXAMPLE_ENRICHED) $(EXAMPLE_TAGS)
 	@test -f $(EXAMPLE_ENRICHED) || (echo "missing $(EXAMPLE_ENRICHED); run make example-enrich first" && exit 1)
+	@$(MAKE) example-tags-apply
 	$(REDOCLY) build-docs $(EXAMPLE_ENRICHED) -o $(EXAMPLE_REDOC)
+
+example-incremental-pass1:
+	@test -f $(EXAMPLE_ENRICHED) || (echo "missing $(EXAMPLE_ENRICHED); complete initial enrich workflow first" && exit 1)
+	@test -f $(INCREMENTAL_HAR) || (echo "missing $(INCREMENTAL_HAR); export incremental HAR (see README.zh-CN.md)" && exit 1)
+	@echo "Incremental pass 1: discover new templates into $(EXAMPLE_ENRICHED)"
+	$(CLI) pass -i $(INCREMENTAL_HAR) -o $(EXAMPLE_ENRICHED) -p $(EXAMPLE_PREFIX) -f har
+
+example-incremental-pass2:
+	@test -f $(EXAMPLE_ENRICHED) || (echo "missing $(EXAMPLE_ENRICHED)" && exit 1)
+	@test -f $(INCREMENTAL_HAR) || (echo "missing $(INCREMENTAL_HAR)" && exit 1)
+	@echo "Incremental pass 2: materialize new paths (curate new ignore: entries first)"
+	$(CLI) pass -i $(INCREMENTAL_HAR) -o $(EXAMPLE_ENRICHED) -p $(EXAMPLE_PREFIX) -f har
+
+example-incremental-enrich:
+	@test -f $(EXAMPLE_ENRICHED) || (echo "missing $(EXAMPLE_ENRICHED)" && exit 1)
+	@test -f $(INCREMENTAL_HAR) || (echo "missing $(INCREMENTAL_HAR)" && exit 1)
+	@test -n "$$OPENAI_API_KEY" || (echo "set OPENAI_API_KEY" && exit 1)
+	@echo "Incremental enrich: fill empty semantic fields only (no --force)"
+	$(CLI) enrich \
+		-i $(INCREMENTAL_HAR) \
+		-s $(EXAMPLE_ENRICHED) \
+		-o $(EXAMPLE_ENRICHED) \
+		-p $(EXAMPLE_PREFIX) \
+		-f har \
+		--samples $(or $(SAMPLES),1) \
+		--concurrency $(or $(CONCURRENCY),10) \
+		$(if $(MODEL),--model $(MODEL),) \
+		$(if $(BASE_URL),--base-url $(BASE_URL),)
 
 example-clean:
 	rm -rf $(EXAMPLE_DIR)

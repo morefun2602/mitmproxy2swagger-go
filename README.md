@@ -32,6 +32,7 @@ Subcommands:
 - `curate` — cluster `x-path-templates` (`--auto`), LLM merge suggestions (`--llm-suggest`), apply edited suggestions (`--apply-suggestions`); see [ADR-0007](docs/adr/0007-curate-curation-assist.md)
 - `auth observe` / `auth apply` — two-phase authentication: observe credentials into `auth-observations.yaml`, then after curl verification write `components.securitySchemes` and `security`; see [ADR-0008](docs/adr/0008-auth-observation-two-phase.md)
 - `enrich` — LLM semantic enrichment (see [ADR-0003](docs/adr/0003-llm-enrichment-subcommand.md))
+- `tags apply` — apply `tags.yaml` sidecar for Redoc grouping (see below)
 - `version` — print build version
 - `completion` — generate shell completion scripts
 
@@ -80,6 +81,62 @@ Existing schema content is merged with a set-if-not-exists policy: new keys are 
 
 HAR files are auto-detected. You can force the format with `-f har`.
 
+### Incremental update (existing enriched schema)
+
+After the initial Pass → Curation → second Pass → `enrich`, if endpoints are **missing** or **individual operations** need better docs or structure, record a new HAR that covers only the missing flows and merge into the same `enriched.yaml` (no need to restart from a separate `schema.yaml`).
+
+**Merge policy (see [CONTEXT.md](CONTEXT.md) — Schema Merge / Enrichment Merge):**
+
+- **Pass**: set-if-not-exists for paths and HTTP methods; does **not** overwrite existing parameters, requestBody, or responses.
+- **Enrich** (default, no `--force`): fills empty semantic fields only; does **not** overwrite existing summaries or descriptions. Still calls the LLM for every endpoint, but only empty fields are written.
+- **Enrich `--force`**: rewrites semantic fields on **all** operations — usually avoid for incremental work.
+
+**Recommended workflow:**
+
+1. **Backup** — commit or copy `enriched.yaml`.
+2. **Incremental HAR** — browse only missing APIs; export e.g. `testdata/local/incremental.har`.
+3. **First pass** — append new `ignore:` templates to `enriched.yaml`:
+
+   ```bash
+   mitmproxy2swagger pass \
+     -i incremental.har \
+     -o enriched.yaml \
+     -p https://api.example.com/v1
+   ```
+
+4. **Curation (manual)** — remove `ignore:` only from **new** `x-path-templates` entries; leave existing order alone. Avoid `curate --auto` on incremental runs (can change template precedence).
+5. **Second pass** — same `-i` / `-o` / `-p` as step 3.
+6. **Enrich** — without `--force`:
+
+   ```bash
+   mitmproxy2swagger enrich \
+     -i incremental.har \
+     -s enriched.yaml \
+     -o enriched.yaml \
+     -p https://api.example.com/v1
+   ```
+
+**Fixing individual operations:**
+
+| Issue | Action |
+|-------|--------|
+| Docs only | Edit YAML, or clear semantic fields on that operation and re-run `enrich` (no `--force`) with a HAR that includes the request |
+| Wrong structure | Delete the method (or path) from `paths`, ensure the template in `x-path-templates` is active (no `ignore:`), then second Pass + `enrich` |
+
+Example Makefile targets: `example-incremental-pass1` → manual curation → `example-incremental-pass2` → `example-incremental-enrich` (requires `testdata/local/incremental.har` and existing `build/example/enriched.yaml`).
+
+### Redoc grouping (`tags apply`)
+
+LLM `enrich` tags are often too granular for Redoc. Maintain a `tags.yaml` sidecar (prefix rules + per-operation overrides), then run **after enrich, before Redoc**:
+
+```bash
+mitmproxy2swagger tags apply \
+  -s build/example/enriched.yaml \
+  -t build/example/tags.yaml
+```
+
+Replaces each operation’s `tags` with a single primary tag by default; `--merge` prefers the sidecar tag. Writes top-level `tags:` and `x-tagGroups` when present. See `build/example/tags.yaml` (alongside `enriched.yaml`). Use `make example-tags-apply` or `make example-redoc` (runs tags apply first).
+
 ## CLI flags (`pass`)
 
 | Flag | Short | Default | Description |
@@ -122,6 +179,7 @@ err := pass.Run(pass.Options{
 | `pkg/curate` | `Run`, `Options`, `AutoTemplates`, `LoadSuggestionsFile` |
 | `pkg/auth` | `RunObserve`, `RunApply`, `Options`, `ApplyOptions`, `LoadObservationsFile` |
 | `pkg/enrich` | `Run`, `Options`, `EnrichmentResult`, `RedactMode` |
+| `pkg/tags` | `RunApply`, `ApplyOptions`, `LoadTagsFile` |
 | `pkg/capture` | `Reader`, `CapturedRequest`, `ProgressFunc` |
 | `pkg/capture/open` | `OpenReader` |
 | `pkg/schema` | `Document`, `Load`, `Save` |

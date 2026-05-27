@@ -13,8 +13,10 @@ type Document struct {
 	Info           map[string]any `yaml:"info"`
 	Servers        []any          `yaml:"servers,omitempty"`
 	Paths          MapSlice       `yaml:"paths,omitempty"`
+	Tags           []any          `yaml:"tags,omitempty"`
 	Components     map[string]any `yaml:"components,omitempty"`
 	Security       []any          `yaml:"security,omitempty"`
+	XTagGroups     []any          `yaml:"x-tagGroups,omitempty"`
 	XPathTemplates []string       `yaml:"x-path-templates,omitempty"`
 }
 

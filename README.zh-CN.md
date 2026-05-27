@@ -32,6 +32,7 @@ go build -o mitmproxy2swagger ./cmd/mitmproxy2swagger
 - `curate` — 聚类 `x-path-templates`（`--auto`）、LLM 合并建议（`--llm-suggest`）、应用建议（`--apply-suggestions`）；见 [ADR-0007](docs/adr/0007-curate-curation-assist.md)
 - `auth observe` — 扫描抓包中的鉴权相关 header，写出 `auth-observations.yaml`；见 [ADR-0008](docs/adr/0008-auth-observation-two-phase.md)
 - `enrich` — LLM 语义增强（见 [ADR-0003](docs/adr/0003-llm-enrichment-subcommand.md)）
+- `tags apply` — 从 `tags.yaml` 侧车写入 operation 分组与 `x-tagGroups`（见下文）
 - `version` — 打印构建版本
 - `completion` — 生成 shell 补全脚本
 
@@ -80,6 +81,66 @@ go build -o mitmproxy2swagger ./cmd/mitmproxy2swagger
 
 HAR 文件会自动检测格式。可用 `-f har` 强制指定。
 
+### 增量更新（已有 Enriched Schema）
+
+完成首轮 Pass → Curation → Second Pass → `enrich` 后，若发现**缺少部分接口**或**个别接口注释/结构需修正**，可重新录制**仅覆盖缺失场景**的 HAR，并在同一份 `enriched.yaml` 上增量合并（不必从 `schema.yaml` 重来）。
+
+**合并策略（与 [CONTEXT.md](CONTEXT.md) 中 Schema Merge / Enrichment Merge 一致）：**
+
+- **Pass**：仅当 path / HTTP method 不存在时写入（set-if-not-exists）；**不会**覆盖已有 operation 的 parameters、requestBody、responses。
+- **Enrich**（默认，无 `--force`）：仅补全空的语义字段（summary、description、参数说明等）；**不会**覆盖已有中文注释。会对 schema 中所有 endpoint 调用 LLM，但只有空字段会被写入。
+- **Enrich `--force`**：重写**全部** operation 的语义字段——增量场景下通常**不要**使用。
+
+**推荐流程：**
+
+1. **备份** — `git commit` 或复制 `enriched.yaml`。
+2. **增量 HAR** — 在浏览器中只操作此前未抓到的接口，导出 `incremental.har`（可放在 `testdata/local/`，已 gitignore）。
+3. **First Pass** — 向 `enriched.yaml` 追加新的 `x-path-templates`（带 `ignore:`）：
+
+   ```bash
+   mitmproxy2swagger pass \
+     -i incremental.har \
+     -o enriched.yaml \
+     -p https://api.example.com/v1
+   ```
+
+4. **Curation（手工）** — 仅对**新增**的 `x-path-templates` 条目去掉 `ignore:`；已有条目与顺序尽量不动。一般**不要**对增量场景再跑 `curate --auto`（可能改变模板优先级，影响已生成 endpoint 的匹配）。
+5. **Second Pass** — 将新模板物化到 `paths`（同上 `-i` / `-o` / `-p`）。
+6. **Enrich** — 为**新** endpoint 补语义字段（不加 `--force`）：
+
+   ```bash
+   mitmproxy2swagger enrich \
+     -i incremental.har \
+     -s enriched.yaml \
+     -o enriched.yaml \
+     -p https://api.example.com/v1
+   ```
+
+**个别已有接口修正（可选）：**
+
+| 问题 | 做法 |
+|------|------|
+| 仅注释/语义不清 | 直接编辑 `enriched.yaml`；或删除该 operation 上的 `summary` / `description` / 参数 `description` 后，用含该请求的 HAR 再跑 `enrich`（无 `--force`） |
+| 结构不对（参数、body、responses） | 从 `paths` 删除该 method（或整段 path），确认 `x-path-templates` 中对应模板无 `ignore:`，再跑 Second Pass + `enrich` |
+
+仓库示例可用 Makefile：`make example-incremental-pass1` → 手工 Curation → `make example-incremental-pass2` → `make example-incremental-enrich`（需 `testdata/local/incremental.har` 与已有 `build/example/enriched.yaml`）。
+
+### Redoc 分组（`tags apply`）
+
+`enrich` 生成的 `tags` 由 LLM 推断，Redoc 侧边栏可能过碎或重复。维护侧车 `tags.yaml`（路径前缀默认 + `METHOD /path` 覆盖），在 **enrich 之后、Redoc 之前** 运行：
+
+```bash
+mitmproxy2swagger tags apply \
+  -s build/example/enriched.yaml \
+  -t build/example/tags.yaml
+```
+
+- 默认**替换**每个 operation 的 `tags` 为侧车中的**单个**主标签；`--merge` 时优先采用侧车标签并与已有 tag 去重合并。
+- 可定义顶层 `tags:` 与 Redoc `x-tagGroups`（见 `build/example/tags.yaml`，与 `enriched.yaml` 同目录）。
+- 未匹配到规则的 operation 会打印警告；`--strict` 时失败退出。
+
+示例：`make example-tags-apply`，或 `make example-redoc`（会自动先执行 tags apply）。
+
 ## CLI 参数（`pass`）
 
 | 参数 | 短选项 | 默认值 | 说明 |
@@ -122,6 +183,7 @@ err := pass.Run(pass.Options{
 | `pkg/curate` | `Run`、`Options`、`AutoTemplates`、`LoadSuggestionsFile` |
 | `pkg/auth` | `RunObserve`、`Options`、`LoadObservationsFile` |
 | `pkg/enrich` | `Run`、`Options`、`EnrichmentResult`、`RedactMode` |
+| `pkg/tags` | `RunApply`、`ApplyOptions`、`LoadTagsFile` |
 | `pkg/capture` | `Reader`、`CapturedRequest`、`ProgressFunc` |
 | `pkg/capture/open` | `OpenReader` |
 | `pkg/schema` | `Document`、`Load`、`Save` |
